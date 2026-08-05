@@ -1,0 +1,28 @@
+{
+  "layers": [
+    {
+      "name": "避難所",
+      "file": "data/shelters.geojson",
+      "type": "shelter",
+      "visible": true
+    },
+    {
+      "name": "避難経路",
+      "file": "data/routes.geojson",
+      "type": "route",
+      "visible": true
+    },
+    {
+      "name": "浸水想定区域",
+      "file": "data/flood.geojson",
+      "type": "flood",
+      "visible": true
+    },
+    {
+      "name": "土砂災害警戒区域",
+      "file": "data/landslide.geojson",
+      "type": "landslide",
+      "visible": false
+    }
+  ]
+}
