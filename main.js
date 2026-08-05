@@ -1,5 +1,5 @@
-const fallbackLocation = [35.8294, 137.9536]; // 伊那市
-const fallbackZoom = 13;
+const fallbackLocation = [35.8730, 137.9204]; // 伊那市西箕輪（上戸地区）
+const fallbackZoom = 15;
 const currentLocationZoom = 15;
 const _isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const gsiAttribution =
@@ -45,8 +45,32 @@ gsiStandard.addTo(map);
 gsiAirPhoto.addTo(map); gsiAirPhoto.setOpacity(0);
 naganoCsMap.addTo(map); naganoCsMap.setOpacity(0);
 
+/* ─── 住宅地図（PMTiles）─── */
+const jutakuTiles = protomapsL.leafletLayer({
+  url: 'data/jutaku.pmtiles',
+  maxDataZoom: 18,
+  paintRules: [
+    {
+      dataLayer: 'jutaku',
+      symbolizer: new protomapsL.PolygonSymbolizer({
+        fill: 'rgba(180,210,255,0.45)',
+        stroke: 'rgba(0,80,180,0.75)',
+        width: 1.2
+      })
+    }
+  ],
+  labelRules: []
+});
+jutakuTiles.addTo(map);
 
-
+// Excel連携用レイヤーレジストリ（excel.jsから参照）
+window.pmLayers = {
+  '住宅地図': {
+    layer: jutakuTiles,
+    dataLayer: 'jutaku',
+    keys: ['B_FID', '番地', 'Kanj_Ooa', 'Post_num']
+  }
+};
 
 
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
