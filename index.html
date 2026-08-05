@@ -1,253 +1,119 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>上戸地区 防災マップ</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>上戸地区 防災マップ</title>
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="./style.css?v=9" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="map-card">
+        <div id="map" aria-label="地図"></div>
+      </section>
+    </main>
 
-    #map {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-    }
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
 
-    /* ヘッダー */
-    #header {
-      position: absolute;
-      top: 10px; left: 50%;
-      transform: translateX(-50%);
-      background: rgba(220, 38, 38, 0.92);
-      color: #fff;
-      padding: 8px 20px;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: bold;
-      letter-spacing: 0.05em;
-      z-index: 1000;
-      pointer-events: none;
-      white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
+    <!-- 現場掲示板 フロートボタン -->
+    <button id="bbsFloatBtn">📋 現場掲示板<span id="bbsBadge"></span></button>
 
-    /* 凡例 */
-    #legend {
-      position: absolute;
-      bottom: 30px; right: 10px;
-      background: rgba(255,255,255,0.95);
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 12px;
-      z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      min-width: 140px;
-    }
-    #legend h4 {
-      font-size: 12px;
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: #333;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 4px;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 4px 0;
-      color: #444;
-    }
-    .legend-dot {
-      width: 14px; height: 14px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      border: 2px solid rgba(0,0,0,0.15);
-    }
-    .legend-line {
-      width: 20px; height: 4px;
-      flex-shrink: 0;
-      border-radius: 2px;
-    }
-    .legend-square {
-      width: 14px; height: 14px;
-      flex-shrink: 0;
-      opacity: 0.7;
-    }
-  </style>
-</head>
-<body>
+    <!-- 現場掲示板 パネル -->
+    <div id="bbsPanel">
+      <div id="bbsHandle">
+        <div id="bbsHandleGrip"><span></span><span></span><span></span></div>
+        <span id="bbsPanelTitle">📋 現場掲示板</span>
+        <button id="bbsRefreshBtn" title="更新">🔄</button>
+        <button id="bbsCollapseBtn" title="折りたたむ">▾</button>
+        <button id="bbsClose">✕</button>
+      </div>
+      <div id="bbsBody">
+        <!-- 投稿者バー -->
+        <div id="bbsAuthorBar">
+          <span id="bbsAuthorBarLabel">👤 投稿者：</span>
+          <span id="bbsAuthorBarName">未登録</span>
+          <div id="bbsAuthorEditor" style="display:none">
+            <input id="bbsAuthorInput" type="text" placeholder="名前を入力..." maxlength="20">
+            <button id="bbsAuthorSaveBtn">登録</button>
+          </div>
+          <button id="bbsAuthorEditBtn">✏️</button>
+        </div>
+        <div class="bbs-tabs">
+          <button class="bbs-tab active" id="bbsTabList" data-tab="list">投稿一覧</button>
+          <button class="bbs-tab" id="bbsTabNew" data-tab="new">＋ 新規投稿</button>
+        </div>
+        <div id="bbsListPane" class="bbs-pane">
+          <div id="bbsLoadingMsg">読み込み中...</div>
+          <div id="bbsEmptyMsg" style="display:none">投稿がありません</div>
+          <div id="bbsList"></div>
+        </div>
+        <div id="bbsNewPane" class="bbs-pane" style="display:none">
+          <div class="bbs-field">
+            <label>カテゴリ</label>
+            <select id="bbsCatSel">
+              <option value="道路">🛣 道路</option>
+              <option value="河川">💧 河川</option>
+              <option value="土砂">⛰ 土砂</option>
+              <option value="施設">🏢 施設</option>
+              <option value="その他">📌 その他</option>
+            </select>
+          </div>
+          <div class="bbs-field">
+            <label>コメント <span style="color:#c00">*</span></label>
+            <textarea id="bbsComment" rows="3" placeholder="状況を入力..."></textarea>
+          </div>
+          <div class="bbs-field">
+            <label>写真（任意）</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="bbs-action-btn" id="bbsTakePhotoBtn">📷 撮影する</button>
+              <button class="bbs-action-btn" id="bbsPickPhotoBtn">🖼 ギャラリー</button>
+            </div>
+            <input id="bbsPhotoInput" type="file" accept="image/*" style="display:none">
+            <img id="bbsPhotoPreview" style="display:none;max-width:120px;max-height:80px;border-radius:6px;margin-top:6px;cursor:pointer">
+          </div>
+          <div class="bbs-field">
+            <label>位置情報</label>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px">
+              <button class="bbs-action-btn" id="bbsGetLocBtn">📍 現在地を取得</button>
+              <span id="bbsLocStatus">未設定</span>
+            </div>
+          </div>
+          <button id="bbsSubmitBtn">📤 投稿する</button>
+          <div id="bbsFormStatus"></div>
+        </div>
+      </div>
+    </div>
 
-<div id="header">🛡️ 上戸地区 防災マップ</div>
+    <!-- トースト通知 -->
+    <div id="toast"></div>
 
-<div id="map"></div>
+    <!-- ライトボックス -->
+    <div id="lightbox"><img id="lightboxImg" alt=""></div>
 
-<div id="legend">
-  <h4>凡 例</h4>
-  <div class="legend-item" id="legend-shelter" style="display:none">
-    <div class="legend-dot" style="background:#0066cc"></div>
-    <span>避難所</span>
-  </div>
-  <div class="legend-item" id="legend-route" style="display:none">
-    <div class="legend-line" style="background:#ff6600"></div>
-    <span>避難経路</span>
-  </div>
-  <div class="legend-item" id="legend-flood" style="display:none">
-    <div class="legend-square" style="background:#3b82f6"></div>
-    <span>浸水想定区域</span>
-  </div>
-  <div class="legend-item" id="legend-landslide" style="display:none">
-    <div class="legend-square" style="background:#f59e0b"></div>
-    <span>土砂災害警戒区域</span>
-  </div>
-  <div id="legend-empty" style="color:#888; font-size:11px;">
-    データを追加すると<br>ここに表示されます
-  </div>
-</div>
+    <!-- 確認ダイアログ -->
+    <div id="confirmOverlay">
+      <div id="confirmBox">
+        <div id="confirmMsg"></div>
+        <div class="c-btns">
+          <button class="c-cancel" id="confirmCancel">キャンセル</button>
+          <button class="c-ok" id="confirmOk">続行</button>
+        </div>
+      </div>
+    </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-// =============================================
-// 地図の初期設定
-// =============================================
-// 中心座標・ズームはご自身の地域に合わせて変更してください
-const MAP_CENTER = [35.15, 136.85]; // 緯度, 経度
-const MAP_ZOOM = 14;
-
-const map = L.map('map', {
-  center: MAP_CENTER,
-  zoom: MAP_ZOOM,
-  zoomControl: false
-});
-
-L.control.zoom({ position: 'topright' }).addTo(map);
-
-// =============================================
-// 国土地理院ベースマップ
-// =============================================
-const gsiStd = L.tileLayer(
-  'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
-  { attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>', maxZoom: 18 }
-);
-const gsiPale = L.tileLayer(
-  'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
-  { attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>', maxZoom: 18 }
-);
-const gsiPhoto = L.tileLayer(
-  'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
-  { attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>', maxZoom: 18 }
-);
-
-gsiPale.addTo(map); // デフォルトは淡色地図
-
-const baseMaps = {
-  '標準地図': gsiStd,
-  '淡色地図': gsiPale,
-  '航空写真': gsiPhoto
-};
-
-// =============================================
-// データレイヤー（data/フォルダのGeoJSONを読み込む）
-// =============================================
-const overlays = {};
-
-// レイヤースタイル定義
-const STYLES = {
-  shelter: {
-    radius: 8, fillColor: '#0066cc', color: '#fff',
-    weight: 2, opacity: 1, fillOpacity: 0.9
-  },
-  route: {
-    color: '#ff6600', weight: 3, opacity: 0.8, dashArray: '6,4'
-  },
-  flood: {
-    color: '#3b82f6', weight: 1, fillColor: '#93c5fd', fillOpacity: 0.5
-  },
-  landslide: {
-    color: '#d97706', weight: 1, fillColor: '#fcd34d', fillOpacity: 0.5
-  },
-  hazard: {
-    color: '#dc2626', weight: 1, fillColor: '#fca5a5', fillOpacity: 0.4
-  },
-  default: {
-    color: '#6366f1', weight: 2, fillColor: '#a5b4fc', fillOpacity: 0.4
-  }
-};
-
-// data/layers.json を読み込んでレイヤーを追加する
-async function loadLayers() {
-  let layerConfig;
-  try {
-    const res = await fetch('data/layers.json');
-    if (!res.ok) return; // まだ設定ファイルがなければスキップ
-    layerConfig = await res.json();
-  } catch (e) {
-    return;
-  }
-
-  let hasLayer = false;
-  const legendEmpty = document.getElementById('legend-empty');
-
-  for (const layer of (layerConfig.layers || [])) {
-    try {
-      const res = await fetch(layer.file);
-      if (!res.ok) continue;
-      const geojson = await res.json();
-
-      const type = layer.type || 'default';
-      const style = STYLES[type] || STYLES.default;
-
-      let leafletLayer;
-      if (type === 'shelter' || layer.geometry_type === 'Point') {
-        leafletLayer = L.geoJSON(geojson, {
-          pointToLayer: (feature, latlng) => L.circleMarker(latlng, style),
-          onEachFeature: bindPopup
-        });
-      } else {
-        leafletLayer = L.geoJSON(geojson, {
-          style: () => style,
-          onEachFeature: bindPopup
-        });
-      }
-
-      overlays[layer.name] = leafletLayer;
-      if (layer.visible !== false) leafletLayer.addTo(map);
-
-      // 凡例を表示
-      const legendId = 'legend-' + type;
-      const legendEl = document.getElementById(legendId);
-      if (legendEl) legendEl.style.display = 'flex';
-
-      hasLayer = true;
-    } catch (e) {
-      console.warn('レイヤー読み込み失敗:', layer.file, e);
-    }
-  }
-
-  if (hasLayer && legendEmpty) legendEmpty.style.display = 'none';
-
-  // レイヤーコントロールを追加
-  L.control.layers(baseMaps, overlays, { position: 'topright', collapsed: false }).addTo(map);
-}
-
-function bindPopup(feature, layer) {
-  if (!feature.properties) return;
-  const props = feature.properties;
-  const rows = Object.entries(props)
-    .filter(([k, v]) => v != null && v !== '')
-    .map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`)
-    .join('');
-  if (rows) {
-    layer.bindPopup(`<table style="font-size:12px;border-collapse:collapse">${rows}</table>`);
-  }
-}
-
-// ベースマップのみのレイヤーコントロール（データなし時）
-L.control.layers(baseMaps, {}, { position: 'topright', collapsed: false }).addTo(map);
-
-// データ読み込み実行
-loadLayers();
-</script>
-</body>
+    <script src="https://unpkg.com/exifr/dist/mini.legacy.umd.js"></script>
+    <script src="./main.js?v=1"></script>
+    <script src="./weather.js?v=3"></script>
+  </body>
 </html>

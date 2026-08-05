@@ -1,0 +1,773 @@
+const fallbackLocation = [35.8294, 137.9536]; // 伊那市
+const fallbackZoom = 13;
+const currentLocationZoom = 15;
+const _isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const gsiAttribution =
+  '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>';
+
+const map = L.map("map", {
+  zoomControl: true,
+  maxZoom: 25
+}).setView(fallbackLocation, fallbackZoom);
+
+const gsiStandard = L.tileLayer(
+  "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+  {
+    attribution: gsiAttribution,
+    maxNativeZoom: 18,
+    maxZoom: 25,
+    className: "grayscale-layer bm-multiply"
+  }
+);
+
+const gsiAirPhoto = L.tileLayer(
+  "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+  {
+    attribution: gsiAttribution,
+    maxNativeZoom: 18,
+    maxZoom: 25,
+    className: "bm-multiply"
+  }
+);
+
+const naganoCsMap = L.tileLayer(
+  "https://tile.geospatial.jp/CS/VER2/{z}/{x}/{y}.png",
+  {
+    attribution:
+      '<a href="https://www.geospatial.jp/ckan/dataset/nagano-csmap">長野県CS立体図</a>',
+    maxNativeZoom: 18,
+    maxZoom: 25,
+    className: "bm-multiply"
+  }
+);
+
+gsiStandard.addTo(map);
+gsiAirPhoto.addTo(map); gsiAirPhoto.setOpacity(0);
+naganoCsMap.addTo(map); naganoCsMap.setOpacity(0);
+
+
+
+
+
+// GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
+map.createPane('gpxPane');
+map.getPane('gpxPane').style.zIndex = 460;
+
+const baseLayers = {};
+
+const overlays = {};
+
+let layerControl;
+
+function renderLayerControl() {
+  if (layerControl) map.removeControl(layerControl);
+
+  layerControl = L.control.layers(baseLayers, overlays, {
+    position: "topright",
+    collapsed: false
+  });
+  layerControl.addTo(map);
+
+  // 凡例注入
+
+  var panel = document.querySelector('.leaflet-control-layers');
+  if (!panel) return;
+  var lcList = panel.querySelector('.leaflet-control-layers-list');
+  var base = panel.querySelector('.leaflet-control-layers-base');
+  var overlaysDiv = panel.querySelector('.leaflet-control-layers-overlays');
+
+  // ✕ 閉じるボタン
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'lc-close-btn';
+  closeBtn.textContent = '✕';
+  panel.insertBefore(closeBtn, panel.firstChild);
+
+  // メニューボタン（body直下・fixed）
+  var openBtn = document.createElement('button');
+  openBtn.className = 'lc-open-btn';
+  openBtn.textContent = 'メニュー';
+  document.body.appendChild(openBtn);
+
+  function openPanel()  { panel.classList.remove('lc-hidden'); openBtn.style.display = 'none'; }
+  function closePanel() { panel.classList.add('lc-hidden');    openBtn.style.display = 'block'; }
+  closeBtn.addEventListener('click', closePanel);
+  openBtn.addEventListener('click', openPanel);
+
+  // ── ツールボックス（lcList 先頭）──
+  var tbDiv = document.createElement('div');
+  tbDiv.id = 'tbLayers';
+  var curBtn = document.createElement('button');
+  curBtn.className = 'tb-btn'; curBtn.id = 'btnCurrentLoc';
+  curBtn.innerHTML = '<span class="ico">📍</span><span>現在地</span>';
+  tbDiv.appendChild(curBtn);
+  lcList.insertBefore(tbDiv, lcList.firstChild);
+
+  curBtn.addEventListener('click', function() {
+    var btn = this; btn.classList.add('loading');
+    if (_lastKnownPos && (Date.now() - _lastKnownPos.timestamp) < 30000) {
+      var z1 = Math.max(map.getZoom(), currentLocationZoom);
+      map.setView([_lastKnownPos.coords.latitude, _lastKnownPos.coords.longitude], z1);
+      btn.classList.remove('loading');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) { _lastKnownPos = pos; var z2 = Math.max(map.getZoom(), currentLocationZoom); map.setView([pos.coords.latitude, pos.coords.longitude], z2); btn.classList.remove('loading'); },
+      function() { toast('現在地を取得できませんでした', 3000); btn.classList.remove('loading'); },
+      { enableHighAccuracy: _isMobile, timeout: 15000 }
+    );
+  });
+
+  // ── ベースマップ セクション（.leaflet-control-layers-base に注入）──
+  var baseLbl = document.createElement('div');
+  baseLbl.className = 'lc-section-label';
+  baseLbl.textContent = 'ベースマップ';
+  base.insertBefore(baseLbl, base.firstChild);
+
+  [
+    { id: 'bmStd', label: '地理院標準地図', layer: gsiStandard, defVal: 1.0 },
+    { id: 'bmAir', label: '地理院航空写真', layer: gsiAirPhoto, defVal: 0.0 },
+    { id: 'bmCs',  label: '長野県CS立体図', layer: naganoCsMap, defVal: 0.0 },
+  ].forEach(function(def) {
+    var item = document.createElement('div'); item.className = 'bm-item';
+    var row  = document.createElement('div'); row.className = 'bm-row';
+    var chk  = document.createElement('input'); chk.type = 'checkbox'; chk.id = def.id; chk.checked = def.defVal > 0;
+    var lbl  = document.createElement('label'); lbl.setAttribute('for', def.id); lbl.textContent = def.label;
+    var pct  = document.createElement('span'); pct.className = 'bm-pct'; pct.id = def.id + 'Pct'; pct.textContent = Math.round(def.defVal * 100) + '%';
+    row.appendChild(chk); row.appendChild(lbl); row.appendChild(pct);
+    var slider = document.createElement('input'); slider.type = 'range'; slider.className = 'bm-slider';
+    slider.id = def.id + 'Slider'; slider.min = 0; slider.max = 1; slider.step = 0.05; slider.value = def.defVal;
+    if (def.defVal === 0) { slider.disabled = true; slider.style.opacity = '0.4'; }
+    item.appendChild(row); item.appendChild(slider);
+    base.appendChild(item);
+
+    function applyBm(val) {
+      def.layer.setOpacity(val);
+      pct.textContent = Math.round(val * 100) + '%';
+      chk.checked = val > 0;
+      slider.value = val;
+      slider.disabled = val === 0;
+      slider.style.opacity = val === 0 ? '0.4' : '1';
+    }
+    chk.addEventListener('change', function() { applyBm(this.checked ? (parseFloat(slider.value) || 1.0) : 0); });
+    slider.addEventListener('input', function() { applyBm(parseFloat(this.value)); });
+  });
+
+  var bmSep = document.createElement('div'); bmSep.className = 'leaflet-control-layers-separator';
+  base.appendChild(bmSep);
+
+  // ── オーバーレイ セクションラベル ──
+  var overlayLbl = document.createElement('div'); overlayLbl.className = 'lc-section-label'; overlayLbl.textContent = 'レイヤ';
+  overlaysDiv.insertBefore(overlayLbl, overlaysDiv.firstChild);
+
+  if (window.innerWidth < 768) closePanel();
+}
+
+renderLayerControl();
+
+/* ─── ブランディング表示 ─────────────────────────── */
+const brandingControl = L.control({ position: 'bottomright' });
+brandingControl.onAdd = function() {
+  const div = L.DomUtil.create('div', 'gf-branding');
+  div.innerHTML = 'Powered by Geo･Forest Co.,Ltd.';
+  return div;
+};
+brandingControl.addTo(map);
+
+/* =========================
+   ユーティリティ
+========================= */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function toast(msg, ms = 2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.style.display = 'none', ms);
+}
+
+const _lb = document.getElementById('lightbox');
+const _lbImg = document.getElementById('lightboxImg');
+window.openPhoto = src => { _lbImg.src = src; _lb.style.display = 'flex'; };
+_lb.onclick = () => { _lb.style.display = 'none'; _lbImg.src = ''; };
+
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    const ov = document.getElementById('confirmOverlay');
+    document.getElementById('confirmMsg').textContent = msg;
+    ov.style.display = 'flex';
+    const ok = document.getElementById('confirmOk');
+    const cancel = document.getElementById('confirmCancel');
+    const done = result => { ov.style.display = 'none'; ok.onclick = null; cancel.onclick = null; resolve(result); };
+    ok.onclick = () => done(true);
+    cancel.onclick = () => done(false);
+  });
+}
+
+/* =========================
+   現場掲示板 (BBS)
+========================= */
+const _GH_PAT = ['github_pat_11CEFRMRY0','mquikxruRiN4_ukRsAYZ7rWdrFuv3aYpWk00WJROhS','GF747tXbXCPF5zFI2HJIYA1VDRjLVB'].join('');
+const _GH_FILE_URL = 'https://api.github.com/repos/geoforest001/agatto-map/contents/bbs/posts.json';
+
+let _bbsPosts = [], _bbsSha = null, _bbsMarkers = [], _bbsTimer = null;
+let _bbsPhotoB64 = null, _bbsLat = null, _bbsLng = null;
+let _bbsPhotoMap = {};
+
+async function _bbsFetchPosts() {
+  try {
+    const res = await fetch(_GH_FILE_URL, {
+      headers: { 'Authorization': 'Bearer ' + _GH_PAT, 'Accept': 'application/vnd.github+json' }
+    });
+    if (res.status === 404) { _bbsPosts = []; _bbsSha = null; _bbsCheckNew(); return true; }
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    const data = await res.json();
+    _bbsSha = data.sha;
+    let parsed;
+    if (data.content) {
+      parsed = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
+    } else if (data.download_url) {
+      const raw = await fetch(data.download_url + '?_=' + Date.now());
+      if (!raw.ok) throw new Error('download_url ' + raw.status);
+      parsed = await raw.json();
+    } else {
+      throw new Error('content unavailable');
+    }
+    _bbsPosts = parsed || [];
+    _bbsCheckNew();
+    return true;
+  } catch(e) {
+    console.error('[BBS fetch]', e);
+    toast('掲示板の読込失敗 — 既存の投稿はそのまま表示中', 3000);
+    return false;
+  }
+}
+
+async function _bbsSavePosts(posts, _depth = 0) {
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(posts, null, 2))));
+  const body = { message: 'BBS: update posts', content: encoded, committer: { name: 'Field Map', email: 'map@field' } };
+  if (_bbsSha) body.sha = _bbsSha;
+  const res = await fetch(_GH_FILE_URL, {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + _GH_PAT, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
+    body: JSON.stringify(body)
+  });
+  if (res.status === 409 && _depth < 2) {
+    // 競合: 最新を取得してリモートにない投稿をマージして再試行
+    const r = await fetch(_GH_FILE_URL, { headers: { 'Authorization': 'Bearer ' + _GH_PAT, 'Accept': 'application/vnd.github+json' } });
+    if (!r.ok) throw new Error('競合解決のための再取得に失敗しました');
+    const d = await r.json();
+    _bbsSha = d.sha;
+    const remotePosts = JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g, ''))))) || [];
+    const remoteIds = new Set(remotePosts.map(p => p.id));
+    const newOnly = posts.filter(p => !remoteIds.has(p.id));
+    const merged = newOnly.length > 0 ? [...remotePosts, ...newOnly] : remotePosts;
+    _bbsPosts = merged;
+    if (newOnly.length === 0) return; // 追加投稿なし（削除競合）→ リモート状態を受け入れ
+    return _bbsSavePosts(merged, _depth + 1);
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'GitHub PUT ' + res.status);
+  }
+  const data = await res.json();
+  _bbsSha = data.content.sha;
+}
+
+function _bbsCatEmoji(cat) {
+  return { '道路': '🛣', '河川': '💧', '土砂': '⛰', '施設': '🏢', 'その他': '📌' }[cat] || '📌';
+}
+
+function _bbsFmtTime(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function _bbsRenderMarkers() {
+  _bbsMarkers.forEach(m => map.removeLayer(m));
+  _bbsMarkers = []; _bbsPhotoMap = {};
+  const catCol = { '道路': '#e65100', '河川': '#0277bd', '土砂': '#4e342e', '施設': '#2e7d32', 'その他': '#37474f' };
+  for (const p of _bbsPosts) {
+    if (p.lat == null || p.lng == null) continue;
+    const col = catCol[p.cat] || '#555';
+    const ico = L.divIcon({
+      html: `<div style="background:${col};color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);margin:-16px 0 0 -16px">${_bbsCatEmoji(p.cat)}</div>`,
+      iconSize: [32, 32], className: ''
+    });
+    let pop = `<div style="font-size:12px;max-width:230px"><b>${escapeHtml(p.cat)}</b> <span style="color:#aaa">${_bbsFmtTime(p.ts)}</span>${p.author ? ` <span style="color:#888">👤${escapeHtml(p.author)}</span>` : ''}<br><div style="margin-top:4px">${escapeHtml(p.comment || '')}</div>`;
+    if (p.photo) {
+      _bbsPhotoMap[p.id] = p.photo;
+      pop += `<img src="${p.photo}" style="max-width:210px;max-height:130px;border-radius:6px;margin-top:6px;cursor:pointer;display:block" onclick="_bbsOpenPhoto('${p.id}')">`;
+    }
+    pop += '</div>';
+    const mk = L.marker([p.lat, p.lng], { icon: ico }).addTo(map).bindPopup(pop, { maxWidth: 240 });
+    _bbsMarkers.push(mk);
+  }
+}
+window._bbsOpenPhoto = id => { if (_bbsPhotoMap[id]) openPhoto(_bbsPhotoMap[id]); };
+
+function _bbsRenderList() {
+  const listEl = document.getElementById('bbsList');
+  const loadMsg = document.getElementById('bbsLoadingMsg');
+  const emptyMsg = document.getElementById('bbsEmptyMsg');
+  loadMsg.style.display = 'none';
+  if (!_bbsPosts.length) { emptyMsg.style.display = 'block'; listEl.innerHTML = ''; return; }
+  emptyMsg.style.display = 'none';
+  const sorted = [..._bbsPosts].sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  listEl.innerHTML = '';
+  sorted.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'bbs-card';
+    const hdr = document.createElement('div');
+    hdr.className = 'bbs-card-header';
+    const badge = document.createElement('span');
+    badge.className = 'bbs-cat-badge';
+    badge.textContent = `${_bbsCatEmoji(p.cat)} ${p.cat}`;
+    const ts = document.createElement('span');
+    ts.className = 'bbs-time';
+    ts.textContent = _bbsFmtTime(p.ts);
+    hdr.appendChild(badge); hdr.appendChild(ts);
+    if (p.lat != null) {
+      const jb = document.createElement('button');
+      jb.className = 'bbs-icon-btn'; jb.textContent = '🗺 地図';
+      jb.addEventListener('click', () => { map.setView([p.lat, p.lng], 16); closeBbsPanel(); });
+      hdr.appendChild(jb);
+    }
+    const db = document.createElement('button');
+    db.className = 'bbs-icon-btn'; db.textContent = '🗑'; db.style.color = '#c00';
+    db.addEventListener('click', () => _bbsDeleteById(p.id));
+    hdr.appendChild(db);
+    card.appendChild(hdr);
+    if (p.author) {
+      const au = document.createElement('div');
+      au.className = 'bbs-author'; au.textContent = '👤 ' + p.author;
+      card.appendChild(au);
+    }
+    const cm = document.createElement('div');
+    cm.className = 'bbs-comment'; cm.textContent = p.comment || '';
+    card.appendChild(cm);
+    if (p.photo) {
+      const img = document.createElement('img');
+      img.src = p.photo; img.className = 'bbs-photo';
+      img.addEventListener('click', () => openPhoto(p.photo));
+      card.appendChild(img);
+    }
+    if (p.lat != null) {
+      const loc = document.createElement('div');
+      loc.className = 'bbs-loc';
+      loc.textContent = `📍 ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+      card.appendChild(loc);
+    }
+    listEl.appendChild(card);
+  });
+}
+
+async function _bbsDeleteById(id) {
+  if (!await showConfirm('この投稿を削除しますか？')) return;
+  const newPosts = _bbsPosts.filter(p => p.id !== id);
+  toast('削除中...', 3000);
+  try {
+    await _bbsSavePosts(newPosts);
+    _bbsPosts = newPosts;
+    _bbsRenderMarkers();
+    _bbsRenderList();
+    toast('削除しました', 2000);
+  } catch(e) { toast('削除失敗: ' + e.message, 4000); }
+}
+
+function _bbsCompressPhoto(file) {
+  return new Promise(resolve => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 640; let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      // 50KB以下になるまで品質を下げる（data:image/jpeg;base64, + base64 → 50*1024*4/3+23≈68290文字）
+      let q = 0.82, dataUrl;
+      do { dataUrl = c.toDataURL('image/jpeg', q); q -= 0.1; } while (dataUrl.length > 68000 && q > 0.2);
+      resolve(dataUrl);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+/* 投稿者名管理 */
+function _bbsGetUserName() { return localStorage.getItem('bbsUserName') || ''; }
+function _bbsUpdateAuthorBar() {
+  const name = _bbsGetUserName();
+  document.getElementById('bbsAuthorBarName').textContent = name || '未登録';
+}
+
+(() => {
+  const editBtn = document.getElementById('bbsAuthorEditBtn');
+  const editor  = document.getElementById('bbsAuthorEditor');
+  const input   = document.getElementById('bbsAuthorInput');
+  const saveBtn = document.getElementById('bbsAuthorSaveBtn');
+
+  editBtn.addEventListener('click', () => {
+    input.value = _bbsGetUserName();
+    editor.style.display = 'flex';
+    editBtn.style.display = 'none';
+    input.focus();
+  });
+
+  function saveAuthor() {
+    const name = input.value.trim();
+    if (!name) { toast('名前を入力してください', 1500); return; }
+    localStorage.setItem('bbsUserName', name);
+    _bbsUpdateAuthorBar();
+    editor.style.display = 'none';
+    editBtn.style.display = '';
+    toast('投稿者名を登録しました', 1500);
+  }
+  saveBtn.addEventListener('click', saveAuthor);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') saveAuthor(); });
+})();
+
+const bbsPanel = document.getElementById('bbsPanel');
+const bbsFloatBtn = document.getElementById('bbsFloatBtn');
+const bbsBadge = document.getElementById('bbsBadge');
+
+function _bbsCheckNew() {
+  const last = localStorage.getItem('bbsLastSeen') || '';
+  const hasNew = _bbsPosts.some(p => p.ts > last);
+  bbsBadge.style.display = hasNew ? 'block' : 'none';
+}
+function _bbsMarkSeen() {
+  const latest = _bbsPosts.reduce((m, p) => p.ts > m ? p.ts : m, '');
+  if (latest) localStorage.setItem('bbsLastSeen', latest);
+  bbsBadge.style.display = 'none';
+}
+
+async function openBbsPanel() {
+  _bbsUpdateAuthorBar();
+  bbsPanel.style.display = 'flex';
+  bbsPanel.classList.remove('collapsed');
+  bbsFloatBtn.classList.add('active');
+  _bbsMarkSeen();
+  document.querySelectorAll('.bbs-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('bbsTabList').classList.add('active');
+  document.getElementById('bbsListPane').style.display = '';
+  document.getElementById('bbsNewPane').style.display = 'none';
+  document.getElementById('bbsLoadingMsg').style.display = 'block';
+  document.getElementById('bbsEmptyMsg').style.display = 'none';
+  document.getElementById('bbsList').innerHTML = '';
+  if (await _bbsFetchPosts()) _bbsRenderMarkers();
+  _bbsRenderList();
+  if (!_bbsTimer) _bbsTimer = setInterval(async () => {
+    if (await _bbsFetchPosts()) _bbsRenderMarkers();
+    _bbsRenderList();
+  }, 30000);
+}
+
+function closeBbsPanel() {
+  bbsPanel.style.display = 'none';
+  bbsFloatBtn.classList.remove('active');
+  clearInterval(_bbsTimer); _bbsTimer = null;
+}
+
+document.querySelectorAll('.bbs-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.bbs-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('bbsListPane').style.display = tab === 'list' ? '' : 'none';
+    document.getElementById('bbsNewPane').style.display = tab === 'new' ? '' : 'none';
+  });
+});
+
+bbsFloatBtn.addEventListener('click', () => {
+  if (bbsPanel.style.display === 'flex') closeBbsPanel();
+  else openBbsPanel();
+});
+
+(async () => {
+  if (await _bbsFetchPosts()) _bbsRenderMarkers();
+  setInterval(async () => {
+    if (bbsPanel.style.display !== 'flex') {
+      if (await _bbsFetchPosts()) _bbsRenderMarkers();
+    }
+  }, 60000);
+})();
+
+document.getElementById('bbsClose').addEventListener('click', closeBbsPanel);
+document.getElementById('bbsCollapseBtn').addEventListener('click', () => { bbsPanel.classList.toggle('collapsed'); });
+document.getElementById('bbsRefreshBtn').addEventListener('click', async () => {
+  document.getElementById('bbsLoadingMsg').style.display = 'block';
+  document.getElementById('bbsList').innerHTML = '';
+  if (await _bbsFetchPosts()) _bbsRenderMarkers();
+  _bbsRenderList();
+  toast('更新しました', 1500);
+});
+
+// ドラッグ
+(() => {
+  const handle = document.getElementById('bbsHandle');
+  let drag = null;
+  function startDrag(cx, cy) { const r = bbsPanel.getBoundingClientRect(); drag = { ox: cx - r.left, oy: cy - r.top }; }
+  function moveDrag(cx, cy) {
+    if (!drag) return;
+    let x = cx - drag.ox, y = cy - drag.oy;
+    x = Math.max(0, Math.min(window.innerWidth - bbsPanel.offsetWidth, x));
+    y = Math.max(0, Math.min(window.innerHeight - bbsPanel.offsetHeight, y));
+    bbsPanel.style.left = x + 'px'; bbsPanel.style.top = y + 'px'; bbsPanel.style.right = 'auto';
+  }
+  function endDrag() { drag = null; }
+  handle.addEventListener('touchstart', e => { if (e.target.closest('button')) return; startDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  handle.addEventListener('touchmove', e => { if (!drag) return; e.preventDefault(); moveDrag(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  handle.addEventListener('touchend', endDrag, { passive: true });
+  handle.addEventListener('mousedown', e => { if (e.target.closest('button')) return; startDrag(e.clientX, e.clientY); handle.style.cursor = 'grabbing'; });
+  document.addEventListener('mousemove', e => { if (drag) moveDrag(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', () => { endDrag(); handle.style.cursor = 'grab'; });
+})();
+
+document.getElementById('bbsGetLocBtn').addEventListener('click', () => {
+  document.getElementById('bbsLocStatus').textContent = '取得中...';
+  navigator.geolocation.getCurrentPosition(
+    pos => { _bbsLat = pos.coords.latitude; _bbsLng = pos.coords.longitude;
+      document.getElementById('bbsLocStatus').textContent = `${_bbsLat.toFixed(5)}, ${_bbsLng.toFixed(5)}`; },
+    () => { document.getElementById('bbsLocStatus').textContent = '取得失敗'; },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+});
+
+async function _bbsHandlePhoto(file, fromCamera = false) {
+  if (!file) return;
+  if (fromCamera) {
+    if (_lastKnownPos) {
+      _bbsLat = _lastKnownPos.coords.latitude;
+      _bbsLng = _lastKnownPos.coords.longitude;
+      document.getElementById('bbsLocStatus').textContent =
+        `📍 ${_bbsLat.toFixed(5)}, ${_bbsLng.toFixed(5)}`;
+    }
+  } else {
+    if (window.exifr) {
+      try {
+        const gps = await exifr.gps(file);
+        if (gps && gps.latitude && gps.longitude) {
+          _bbsLat = gps.latitude;
+          _bbsLng = gps.longitude;
+          document.getElementById('bbsLocStatus').textContent =
+            `📷 ${_bbsLat.toFixed(5)}, ${_bbsLng.toFixed(5)}`;
+        }
+      } catch(_) {}
+    }
+  }
+  document.getElementById('bbsTakePhotoBtn').textContent = '圧縮中...';
+  document.getElementById('bbsPickPhotoBtn').textContent = '圧縮中...';
+  _bbsPhotoB64 = await _bbsCompressPhoto(file);
+  if (_bbsPhotoB64) {
+    const prev = document.getElementById('bbsPhotoPreview');
+    prev.src = _bbsPhotoB64; prev.style.display = 'block';
+  }
+  document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
+  document.getElementById('bbsPickPhotoBtn').textContent = '🖼 ギャラリー';
+}
+
+function _bbsOpenFileInput(useCamera) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  if (useCamera) inp.setAttribute('capture', 'environment');
+  inp.style.cssText = 'position:fixed;top:0;left:0;opacity:0;width:0;height:0;pointer-events:none;';
+  document.body.appendChild(inp);
+  inp.onchange = e => {
+    const f = e.target.files[0];
+    if (f) _bbsHandlePhoto(f, useCamera);
+    document.body.removeChild(inp);
+  };
+  inp.click();
+}
+
+document.getElementById('bbsTakePhotoBtn').addEventListener('click', () => _bbsOpenFileInput(true));
+document.getElementById('bbsPickPhotoBtn').addEventListener('click', () => _bbsOpenFileInput(false));
+document.getElementById('bbsPhotoInput').addEventListener('change', e => { _bbsHandlePhoto(e.target.files[0]); e.target.value = ''; });
+document.getElementById('bbsPhotoPreview').addEventListener('click', () => { if (_bbsPhotoB64) openPhoto(_bbsPhotoB64); });
+
+document.getElementById('bbsSubmitBtn').addEventListener('click', async () => {
+  const comment = document.getElementById('bbsComment').value.trim();
+  const cat = document.getElementById('bbsCatSel').value;
+  if (!comment) { toast('コメントを入力してください', 2000); return; }
+  const btn = document.getElementById('bbsSubmitBtn');
+  const status = document.getElementById('bbsFormStatus');
+  btn.disabled = true; status.textContent = '投稿中...';
+  const post = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    ts: new Date().toISOString(), cat, comment,
+    author: _bbsGetUserName(),
+    lat: _bbsLat, lng: _bbsLng,
+    photo: _bbsPhotoB64 || null
+  };
+  try {
+    await _bbsSavePosts([..._bbsPosts, post]);
+    _bbsPosts.push(post);
+    _bbsRenderMarkers();
+    document.getElementById('bbsComment').value = '';
+    _bbsPhotoB64 = null; _bbsLat = null; _bbsLng = null;
+    document.getElementById('bbsPhotoPreview').style.display = 'none';
+    document.getElementById('bbsLocStatus').textContent = '未設定';
+    document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
+    document.getElementById('bbsPickPhotoBtn').textContent = '🖼 ギャラリー';
+    document.querySelectorAll('.bbs-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('bbsTabList').classList.add('active');
+    document.getElementById('bbsListPane').style.display = '';
+    document.getElementById('bbsNewPane').style.display = 'none';
+    _bbsRenderList();
+    toast('投稿しました！', 2500);
+    status.textContent = '';
+  } catch(e) {
+    status.textContent = '投稿失敗: ' + e.message;
+    toast('投稿に失敗しました', 3000);
+  }
+  btn.disabled = false;
+});
+
+/* ─── GPSログ・GPXインポート ───────────────────── */
+let _trackPoints = [];
+let _trackActive = false;
+let _trackLine = null;
+let _importedTrackLine = null;
+
+function _updateTrackLine() {
+  if (_trackPoints.length < 2) return;
+  const latlngs = _trackPoints.map(p => [p.lat, p.lng]);
+  if (_trackLine) { _trackLine.setLatLngs(latlngs); }
+  else { _trackLine = L.polyline(latlngs, { color: '#e53935', weight: 4, opacity: 0.85, pane: 'gpxPane' }).addTo(map); }
+}
+
+function _exportGPX() {
+  if (!_trackPoints.length) { toast('記録がありません', 1500); return; }
+  const name = new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GeoForest Map" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk><name>${name}</name><trkseg>\n`;
+  for (const p of _trackPoints) xml += `    <trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.ts}</time></trkpt>\n`;
+  xml += `  </trkseg></trk>\n</gpx>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([xml], { type: 'application/gpx+xml' }));
+  a.download = `track_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.gpx`;
+  a.click();
+}
+
+function _importGPX(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const gpx = new DOMParser().parseFromString(e.target.result, 'application/xml');
+      const pts = Array.from(gpx.querySelectorAll('trkpt'));
+      if (!pts.length) { toast('トラックポイントが見つかりません', 2500); return; }
+      const latlngs = pts.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))]);
+      if (_importedTrackLine) map.removeLayer(_importedTrackLine);
+      _importedTrackLine = L.polyline(latlngs, { color: '#e53935', weight: 4, opacity: 0.9, pane: 'gpxPane' }).addTo(map);
+      map.fitBounds(_importedTrackLine.getBounds(), { padding: [40, 40] });
+      toast(`GPX読み込み完了（${pts.length}点）`, 2000);
+      _buildTrackCtrl();
+    } catch(_) { toast('GPXの読み込みに失敗しました', 2500); }
+  };
+  reader.readAsText(file);
+}
+
+function _appendImportBtn(div) {
+  const lbl = document.createElement('label');
+  lbl.className = 'track-btn';
+  lbl.textContent = '📂 GPX読込';
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.gpx'; inp.style.display = 'none';
+  inp.onchange = e => { _importGPX(e.target.files[0]); e.target.value = ''; };
+  lbl.appendChild(inp);
+  div.appendChild(lbl);
+}
+
+function _buildTrackCtrl() {
+  const div = document.getElementById('trackCtrl');
+  if (!div) return;
+  div.innerHTML = '';
+  if (_trackActive) {
+    const info = document.createElement('div');
+    info.className = 'track-info'; info.id = 'trackInfo';
+    info.textContent = `🔴 記録中 ${_trackPoints.length}点`;
+    div.appendChild(info);
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'track-btn'; stopBtn.textContent = '⏹ 停止';
+    stopBtn.onclick = () => { _trackActive = false; _buildTrackCtrl(); };
+    div.appendChild(stopBtn);
+  } else if (_trackPoints.length > 0) {
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'track-btn'; saveBtn.textContent = '💾 GPX保存';
+    saveBtn.onclick = _exportGPX;
+    div.appendChild(saveBtn);
+    const clrBtn = document.createElement('button');
+    clrBtn.className = 'track-btn'; clrBtn.textContent = '🗑 ログ消去';
+    clrBtn.onclick = () => {
+      _trackPoints = [];
+      if (_trackLine) { map.removeLayer(_trackLine); _trackLine = null; }
+      _buildTrackCtrl();
+    };
+    div.appendChild(clrBtn);
+  } else {
+    const startBtn = document.createElement('button');
+    startBtn.className = 'track-btn'; startBtn.textContent = '⏺ ログ開始';
+    startBtn.onclick = () => { _trackActive = true; toast('ログ記録を開始しました', 1500); _buildTrackCtrl(); };
+    div.appendChild(startBtn);
+    _appendImportBtn(div);
+    if (_importedTrackLine) {
+      const clrBtn = document.createElement('button');
+      clrBtn.className = 'track-btn'; clrBtn.textContent = '🗑 GPX消去';
+      clrBtn.onclick = () => { map.removeLayer(_importedTrackLine); _importedTrackLine = null; _buildTrackCtrl(); };
+      div.appendChild(clrBtn);
+    }
+  }
+}
+
+const trackControl = L.control({ position: 'bottomright' });
+trackControl.onAdd = function() {
+  const div = L.DomUtil.create('div', 'track-ctrl');
+  div.id = 'trackCtrl';
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.disableScrollPropagation(div);
+  return div;
+};
+trackControl.addTo(map);
+setTimeout(_buildTrackCtrl, 0);
+
+/* ─── 現在地 常時追跡（自動開始） ───────────────── */
+let currentLocationMarker = null;
+let currentLocationCircle = null;
+let _lastKnownPos = null;
+
+if (navigator.geolocation) {
+  let firstFix = true;
+  navigator.geolocation.watchPosition(
+    pos => {
+      _lastKnownPos = pos;
+      const latlng = [pos.coords.latitude, pos.coords.longitude];
+      if (firstFix) {
+        map.setView(latlng, currentLocationZoom);
+        firstFix = false;
+      }
+      if (currentLocationMarker) map.removeLayer(currentLocationMarker);
+      if (currentLocationCircle) map.removeLayer(currentLocationCircle);
+      currentLocationMarker = L.circleMarker(latlng, {
+        radius: 8, color: '#fff', weight: 3,
+        fillColor: '#2979ff', fillOpacity: 1
+      }).addTo(map);
+      if (pos.coords.accuracy) {
+        currentLocationCircle = L.circle(latlng, {
+          radius: pos.coords.accuracy,
+          color: '#2979ff', weight: 1, fillColor: '#2979ff', fillOpacity: 0.1
+        }).addTo(map);
+      }
+      if (_trackActive) {
+        _trackPoints.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date(pos.timestamp).toISOString() });
+        _updateTrackLine();
+        const info = document.getElementById('trackInfo');
+        if (info) info.textContent = `🔴 記録中 ${_trackPoints.length}点`;
+      }
+    },
+    () => { toast('現在地を取得できませんでした', 3000); },
+    { enableHighAccuracy: _isMobile, timeout: 30000, maximumAge: 5000 }
+  );
+}

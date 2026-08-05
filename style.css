@@ -1,0 +1,474 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: #d8e7da;
+}
+
+.page {
+  position: relative;
+  min-height: 100vh;
+}
+
+.map-card {
+  min-height: 100vh;
+}
+
+#map {
+  width: 100%;
+  height: 100vh;
+}
+
+.grayscale-layer {
+  filter: grayscale(100%);
+}
+
+/* ===== ベースマップ 乗算合成 ===== */
+.bm-multiply {
+  mix-blend-mode: multiply;
+}
+
+/* ─── レイヤコントロール 凡例 ─────────────────── */
+.leaflet-control-layers-overlays label:has(.layer-legend) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.lgnd-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.leaflet-control-layers label:has(input:checked) {
+  background: rgba(45, 125, 210, 0.09);
+  border-radius: 5px;
+  color: #1a5fa0;
+  font-weight: 600;
+}
+.layer-legend {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  padding: 4px 0 3px 20px;
+  font-size: 9.5px;
+  color: #555;
+  font-weight: normal;
+}
+.leaflet-control-layers-overlays label:has(input:checked) .layer-legend {
+  display: flex;
+}
+.lgnd-swatch { display: inline-block; flex-shrink: 0; vertical-align: middle; }
+.lgnd-poly   { width: 14px; height: 10px; border-radius: 2px; }
+.lgnd-line   { width: 20px; height: 3px;  border-radius: 2px; }
+.lgnd-sq     { width: 8px;  height: 8px;  border: 1px solid rgba(0,0,0,0.45); }
+.lgnd-circle-sm { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #333; }
+.lgnd-dblcircle {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid currentColor;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lgnd-dblcircle::after {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: white;
+}
+.lgnd-text { white-space: nowrap; }
+
+/* 点施設ポップアップ */
+.shisetsu-popup { border-collapse: collapse; font-size: 12px; width: 100%; }
+.shisetsu-popup th {
+  text-align: left; white-space: nowrap;
+  padding: 2px 6px 2px 0; color: #666; font-weight: normal;
+}
+.shisetsu-popup td { padding: 2px 0; font-weight: bold; }
+
+/* レイヤコントロール スクロール（PC） */
+@media (min-width: 768px) {
+  .leaflet-control-layers-expanded {
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+}
+
+/* レイヤパネル開閉 */
+.leaflet-control-layers.lc-hidden {
+  display: none !important;
+}
+.lc-close-btn {
+  display: block;
+  width: 100%;
+  text-align: right;
+  background: none;
+  border: none;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px 4px;
+  cursor: pointer;
+  color: #555;
+}
+.lc-close-btn:hover { color: #000; }
+.lc-open-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  display: none;
+}
+.lc-open-btn:hover { background: #f4f4f4; }
+@media (max-width: 767px) {
+  .leaflet-control-layers {
+    max-height: calc(100vh - 120px);
+    max-width: min(240px, calc(100vw - 56px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    font-size: 11px !important;
+  }
+  .leaflet-control-layers-expanded {
+    padding: 4px 8px !important;
+  }
+  .leaflet-control-layers label {
+    padding: 1px 0 !important;
+    margin: 0 !important;
+  }
+  .leaflet-control-layers input[type="checkbox"],
+  .leaflet-control-layers input[type="radio"] {
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+  }
+  .leaflet-control-layers-separator {
+    margin: 3px 0 !important;
+  }
+  .lgnd-text {
+    white-space: normal;
+    word-break: break-all;
+  }
+  .layer-legend {
+    padding-left: 12px;
+  }
+  .track-btn {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+}
+
+/* ─── Geo・Forest ブランディング ─────────────────── */
+.gf-branding {
+  background: rgba(255, 255, 255, 0.75);
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #444;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* iOSツールバー対応：底部コントロールを安全領域内に収める */
+.leaflet-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── GPSログコントロール ─────────────────────── */
+.track-ctrl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.track-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  text-align: left;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  font-family: sans-serif;
+}
+.track-btn:hover { background: #f4f4f4; }
+.track-btn:active { background: #e8e8e8; }
+.track-info {
+  background: rgba(229,57,53,0.08);
+  border: 2px solid #e53935;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #e53935;
+  white-space: nowrap;
+  font-family: sans-serif;
+}
+
+/* ---- 現場掲示板 ---- */
+#bbsFloatBtn {
+  position: fixed; top: 80px; left: 10px; z-index: 9000;
+  background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 20px; padding: 6px 14px; overflow: visible;
+  font-size: 12px; font-family: sans-serif; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s; user-select: none;
+}
+#bbsFloatBtn:active { background: #f0f0f0; }
+#bbsFloatBtn.active { background: #eef4ff; border-color: #9bbfff; color: #0044cc; }
+#bbsBadge {
+  position: absolute; top: -5px; right: -5px; width: 14px; height: 14px;
+  background: #e53935; border-radius: 50%; border: 2px solid #fff;
+  display: none; pointer-events: none;
+}
+#bbsPanel {
+  position: fixed; top: 80px; left: 10px; z-index: 9100;
+  background: rgba(255,255,255,0.97); border: 1px solid rgba(0,0,0,0.13);
+  border-radius: 14px; display: none; flex-direction: column;
+  font-family: sans-serif; box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  width: min(300px, calc(100vw - 56px)); max-height: 70vh; overflow: hidden; touch-action: none;
+}
+#bbsHandle {
+  display: flex; align-items: center; padding: 7px 12px 6px;
+  background: #f4f4f4; border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid #e8e8e8; cursor: grab; user-select: none; gap: 8px;
+}
+#bbsHandle:active { cursor: grabbing; }
+#bbsHandleGrip { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+#bbsHandleGrip span { display: block; width: 20px; height: 2px; background: #bbb; border-radius: 1px; }
+#bbsPanelTitle { font-size: 11px; color: #888; flex: 1; }
+#bbsRefreshBtn, #bbsClose, #bbsCollapseBtn {
+  flex-shrink: 0; width: 22px; height: 22px; background: #ddd; border: none;
+  border-radius: 50%; font-size: 12px; line-height: 22px; text-align: center;
+  cursor: pointer; color: #666; padding: 0; -webkit-tap-highlight-color: transparent;
+}
+#bbsRefreshBtn:active, #bbsClose:active, #bbsCollapseBtn:active { background: #bbb; }
+#bbsCollapseBtn { font-size: 10px; transition: transform 0.25s; }
+#bbsPanel.collapsed #bbsCollapseBtn { transform: rotate(180deg); }
+#bbsBody {
+  display: flex; flex-direction: column; overflow: hidden;
+  max-height: calc(70vh - 36px); transition: max-height 0.28s cubic-bezier(0.4,0,0.2,1);
+}
+#bbsPanel.collapsed #bbsBody { overflow: hidden; max-height: 0 !important; }
+.bbs-tabs { display: flex; border-bottom: 1px solid #eee; flex-shrink: 0; }
+.bbs-tab {
+  flex: 1; padding: 7px 4px; border: none; border-bottom: 2px solid transparent;
+  background: #f8f8f8; font-size: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.bbs-tab.active { background: #fff; border-bottom-color: #06f; color: #06f; font-weight: bold; }
+.bbs-pane { overflow-y: auto; padding: 8px 10px 16px; }
+.bbs-card {
+  border: 1px solid #eee; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.bbs-card-header { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+.bbs-cat-badge {
+  font-size: 10px; font-weight: bold; padding: 2px 7px; border-radius: 8px;
+  background: #eef4ff; color: #0044cc; white-space: nowrap;
+}
+.bbs-time { font-size: 10px; color: #aaa; flex: 1; }
+.bbs-icon-btn {
+  font-size: 11px; padding: 2px 6px; border: 1px solid #ddd;
+  border-radius: 6px; background: #f8f8f8; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.bbs-comment { font-size: 12px; color: #222; margin-bottom: 5px; line-height: 1.5; white-space: pre-wrap; }
+.bbs-photo { max-width: 100%; max-height: 120px; border-radius: 6px; cursor: pointer; display: block; margin-top: 4px; object-fit: cover; }
+.bbs-loc { font-size: 10px; color: #888; margin-top: 3px; }
+.bbs-field { margin-bottom: 10px; }
+.bbs-field label { display: block; font-size: 10px; color: #888; margin-bottom: 3px; font-weight: bold; }
+.bbs-field select, .bbs-field textarea {
+  width: 100%; box-sizing: border-box; border: 1px solid #ddd;
+  border-radius: 7px; padding: 7px 9px; font-size: 12px; font-family: sans-serif;
+}
+.bbs-field textarea { resize: vertical; }
+.bbs-action-btn {
+  padding: 6px 12px; border: 1px solid #ccc; border-radius: 7px;
+  background: #f5f5f5; font-size: 11px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#bbsLocStatus { font-size: 10px; color: #888; margin-left: 6px; }
+#bbsSubmitBtn {
+  width: 100%; padding: 10px; background: #06f; color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer;
+}
+#bbsSubmitBtn:disabled { background: #aaa; cursor: default; }
+#bbsFormStatus { font-size: 11px; color: #888; text-align: center; margin-top: 6px; min-height: 16px; }
+#bbsLoadingMsg, #bbsEmptyMsg { text-align: center; color: #999; font-size: 12px; padding: 24px 0; }
+
+/* ---- 投稿者バー ---- */
+#bbsAuthorBar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 7px 12px; background: #f9f9f9;
+  border-bottom: 1px solid #eee; font-family: sans-serif; flex-shrink: 0;
+}
+#bbsAuthorBarLabel { font-size: 11px; color: #888; }
+#bbsAuthorBarName { font-size: 12px; font-weight: bold; color: #333; flex: 1; }
+#bbsAuthorEditBtn {
+  font-size: 12px; padding: 2px 7px; border: 1px solid #ddd;
+  border-radius: 6px; background: #f0f0f0; cursor: pointer;
+}
+#bbsAuthorEditor { display: flex; gap: 5px; align-items: center; width: 100%; margin-top: 4px; }
+#bbsAuthorInput {
+  flex: 1; border: 1px solid #ddd; border-radius: 7px;
+  padding: 5px 8px; font-size: 12px;
+}
+#bbsAuthorSaveBtn {
+  padding: 5px 12px; background: #06f; color: #fff;
+  border: none; border-radius: 7px; font-size: 12px; font-weight: bold; cursor: pointer;
+}
+.bbs-author { font-size: 10px; color: #666; margin-top: 3px; }
+
+/* ---- トースト ---- */
+#toast {
+  position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%);
+  background: rgba(0,0,0,0.75); color: #fff; padding: 8px 14px;
+  border-radius: 10px; font-size: 12px; z-index: 10000; display: none; white-space: nowrap;
+}
+
+/* ---- ライトボックス ---- */
+#lightbox {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+  z-index: 30000; align-items: center; justify-content: center; cursor: zoom-out;
+}
+#lightbox img { max-width: 96vw; max-height: 96vh; border-radius: 8px; object-fit: contain; }
+
+/* ---- 確認ダイアログ ---- */
+#confirmOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 20000; align-items: center; justify-content: center;
+}
+#confirmBox {
+  background: #fff; border-radius: 16px; padding: 20px 20px 14px;
+  max-width: 280px; width: 88%; text-align: center; font-size: 14px; line-height: 1.6;
+}
+#confirmBox .c-btns { display: flex; gap: 10px; margin-top: 14px; }
+#confirmBox .c-btns button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; }
+#confirmBox .c-ok { background: #06f; color: #fff; }
+#confirmBox .c-cancel { background: #f0f0f0; color: #333; }
+
+/* ─── レイヤコントロール 見出し ──────────────── */
+.lc-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #999;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 2px 2px;
+  display: block;
+}
+
+/* ─── ツールボックス ─────────────────────────── */
+#tbLayers { padding: 2px 0 4px; }
+.tb-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  margin: 2px 0;
+  background: #f5f7f5;
+  border: 1px solid #c8d8c8;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1e4d2b;
+  text-align: left;
+  transition: background 0.15s;
+}
+.tb-btn:hover { background: #e0eee0; }
+.tb-btn:active { background: #cce0cc; }
+.tb-btn .ico { font-size: 15px; }
+.tb-btn.loading { opacity: 0.7; pointer-events: none; }
+
+/* ─── 農地検索ボックス ─────────────────────── */
+#farmSearchBox { padding: 4px 6px 0; }
+.addr-search-row { display: flex; gap: 4px; }
+#farmInput {
+  flex: 1; padding: 5px 7px; border: 1px solid #c8d8c8;
+  border-radius: 5px; font-size: 12px; outline: none; min-width: 0; color: #1e4d2b;
+}
+#farmInput:focus { border-color: #4caf50; box-shadow: 0 0 0 2px rgba(76,175,80,0.15); }
+#farmClearBtn {
+  padding: 4px 6px; background: #f0f0f0; border: 1px solid #ccc;
+  border-radius: 5px; cursor: pointer; font-size: 13px; flex-shrink: 0; color: #666;
+}
+#farmClearBtn:hover { background: #e0e0e0; }
+#farmBtn {
+  padding: 4px 7px; background: #e8f5e9; border: 1px solid #c8d8c8;
+  border-radius: 5px; cursor: pointer; font-size: 13px; flex-shrink: 0;
+}
+#farmBtn:hover { background: #c8e6c9; }
+#farmResults {
+  list-style: none; margin: 3px 0 0; padding: 0;
+  max-height: 160px; overflow-y: auto;
+  background: #fff; border: 1px solid #c8d8c8; border-radius: 5px;
+}
+#farmResults:empty { display: none; }
+.addr-item {
+  padding: 5px 8px; font-size: 12px; cursor: pointer;
+  border-bottom: 1px solid #eee; line-height: 1.4; color: #1e4d2b;
+}
+.addr-item:last-child { border-bottom: none; }
+.addr-item:hover { background: #e8f5e9; }
+
+/* ===== ベースマップ 透過スライダー ===== */
+.bm-item { padding: 2px 4px 4px; }
+.bm-row { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #1e4d2b; margin-bottom: 2px; }
+.bm-row label { flex: 1; cursor: pointer; }
+.bm-pct { font-size: 11px; color: #888; min-width: 28px; text-align: right; }
+.bm-slider { width: 100%; height: 4px; accent-color: #4caf50; cursor: pointer; }
+.tb-btn.active { background: #d4eed4; border-color: #4caf50; }
+
+/* ─── 気象レイヤチェックボックス ────────────── */
+#wxLayers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.wx-chk-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #444;
+  background: #fff;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  user-select: none;
+}
+.wx-chk-item input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: #0066ff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.wx-chk-item .ico { font-size: 13px; }
+.wx-chk-item.active,
+.wx-chk-item:has(input:checked) { background: #eef4ff; border-color: #4488dd; color: #1a5fa0; font-weight: 600; }
+.wx-chk-item:hover { background: #f0f4ff; }
