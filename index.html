@@ -95,6 +95,39 @@
       </div>
     </div>
 
+    <!-- Excel連携 ファイル入力 -->
+    <input id="xlsxInput" type="file" accept=".xlsx,.xls,.csv" style="display:none">
+
+    <!-- Excel連携 統計カード -->
+    <div id="xlsxStatCard">
+      <span id="xlsxStatText"></span>
+      <button id="xlsxStatClose" title="連携解除">✕</button>
+    </div>
+
+    <!-- Excel連携 モーダル -->
+    <div id="xlsxModal">
+      <div id="xlsxModalBox">
+        <div id="xlsxModalTitle">📊 Excel連携</div>
+        <div class="xlsxRow">
+          <label class="xlsxLabel">対象レイヤー</label>
+          <select id="xlsxLayerSel"></select>
+        </div>
+        <div class="xlsxRow">
+          <label class="xlsxLabel">GeoJSON側キー列</label>
+          <select id="xlsxKeyGeo"></select>
+        </div>
+        <div class="xlsxRow">
+          <label class="xlsxLabel">Excel側キー列</label>
+          <select id="xlsxKeyXls"></select>
+        </div>
+        <div id="xlsxModalInfo"></div>
+        <div class="xlsxBtns">
+          <button id="xlsxModalCancel">キャンセル</button>
+          <button id="xlsxModalOk" class="xlsxOk">連携する</button>
+        </div>
+      </div>
+    </div>
+
     <!-- トースト通知 -->
     <div id="toast"></div>
 
@@ -113,7 +146,9 @@
     </div>
 
     <script src="https://unpkg.com/exifr/dist/mini.legacy.umd.js"></script>
-    <script src="./main.js?v=1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="./main.js?v=2"></script>
     <script src="./weather.js?v=3"></script>
+    <script src="./excel.js?v=1"></script>
   </body>
 </html>

@@ -99,7 +99,12 @@ function renderLayerControl() {
   var curBtn = document.createElement('button');
   curBtn.className = 'tb-btn'; curBtn.id = 'btnCurrentLoc';
   curBtn.innerHTML = '<span class="ico">📍</span><span>現在地</span>';
+  var xlsxBtn = document.createElement('button');
+  xlsxBtn.className = 'tb-btn'; xlsxBtn.id = 'btnExcelLink';
+  xlsxBtn.innerHTML = '<span class="ico">📊</span><span>Excel連携</span>';
+  xlsxBtn.addEventListener('click', function() { if(window.xlsxOpenFile) xlsxOpenFile(); });
   tbDiv.appendChild(curBtn);
+  tbDiv.appendChild(xlsxBtn);
   lcList.insertBefore(tbDiv, lcList.firstChild);
 
   curBtn.addEventListener('click', function() {
