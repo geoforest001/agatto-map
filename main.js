@@ -79,7 +79,7 @@ map.getPane('gpxPane').style.zIndex = 460;
 
 const baseLayers = {};
 
-const overlays = {};
+const overlays = { '住宅地図': jutakuTiles };
 
 let layerControl;
 

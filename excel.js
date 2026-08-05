@@ -195,48 +195,49 @@ document.getElementById('xlsxStatClose').addEventListener('click', function() {
 
 /* ── PMTilesクリックハンドラ ── */
 map.on('click', function(e) {
-  if (!_xlsxJoinMap || !_xlsxIsPmTiles) return;
-  var cfg = window.pmLayers && window.pmLayers[_xlsxTargetName];
-  if (!cfg || !map.hasLayer(cfg.layer)) return;
+  var pmLayers = window.pmLayers || {};
+  for (var name of Object.keys(pmLayers)) {
+    var cfg = pmLayers[name];
+    if (!map.hasLayer(cfg.layer)) continue;
 
-  var props = null;
-  try {
-    var results = cfg.layer.queryTileFeaturesDebug(e.latlng.lng, e.latlng.lat, 0);
-    for (var entry of results) {
-      for (var f of entry[1]) {
-        if (f.layerName === cfg.dataLayer) { props = f.feature.props; break; }
+    var props = null;
+    try {
+      var results = cfg.layer.queryTileFeaturesDebug(e.latlng.lng, e.latlng.lat, 0);
+      for (var entry of results) {
+        for (var f of entry[1]) {
+          if (f.layerName === cfg.dataLayer) { props = f.feature.props; break; }
+        }
+        if (props) break;
       }
-      if (props) break;
+    } catch(_) {}
+
+    if (!props) continue;
+
+    var geoRows = Object.entries(props)
+      .filter(function(kv) { return kv[1] != null && kv[1] !== ''; })
+      .map(function(kv) {
+        return '<tr><th>' + _esc(kv[0]) + '</th><td>' + _esc(String(kv[1])) + '</td></tr>';
+      }).join('');
+
+    var content = '<table class="xl-popup">' + geoRows;
+
+    if (_xlsxJoinMap && _xlsxIsPmTiles && _xlsxTargetName === name) {
+      var geoKey = String(props[_xlsxKeyGeo] !== undefined ? props[_xlsxKeyGeo] : '').trim();
+      var xlRow  = _xlsxJoinMap.get(geoKey);
+      var xlRows = xlRow
+        ? Object.entries(xlRow)
+            .filter(function(kv) { return kv[0] !== _xlsxKeyXls; })
+            .map(function(kv) {
+              return '<tr class="xl-row"><th>📊 ' + _esc(kv[0]) + '</th><td>' + _esc(String(kv[1])) + '</td></tr>';
+            }).join('')
+        : '<tr><td colspan="2" style="color:#aaa;font-size:11px">（Excelにデータなし）</td></tr>';
+      content += '<tr><td colspan="2" class="xl-sep">── Excel データ ──</td></tr>' + xlRows;
     }
-  } catch(_) {}
 
-  if (!props) return;
-
-  var geoKey = String(props[_xlsxKeyGeo] !== undefined ? props[_xlsxKeyGeo] : '').trim();
-  var xlRow  = _xlsxJoinMap.get(geoKey);
-
-  var geoRows = Object.entries(props)
-    .filter(function(e) { return e[1] != null && e[1] !== ''; })
-    .map(function(e) {
-      return '<tr><th>' + _esc(e[0]) + '</th><td>' + _esc(String(e[1])) + '</td></tr>';
-    }).join('');
-
-  var xlRows = xlRow
-    ? Object.entries(xlRow)
-        .filter(function(e) { return e[0] !== _xlsxKeyXls; })
-        .map(function(e) {
-          return '<tr class="xl-row"><th>📊 ' + _esc(e[0]) + '</th><td>' + _esc(String(e[1])) + '</td></tr>';
-        }).join('')
-    : '<tr><td colspan="2" style="color:#aaa;font-size:11px">（Excelにデータなし）</td></tr>';
-
-  L.popup({ maxWidth: 280 })
-    .setLatLng(e.latlng)
-    .setContent(
-      '<table class="xl-popup">' + geoRows +
-      '<tr><td colspan="2" class="xl-sep">── Excel データ ──</td></tr>' +
-      xlRows + '</table>'
-    )
-    .openOn(map);
+    content += '</table>';
+    L.popup({ maxWidth: 280 }).setLatLng(e.latlng).setContent(content).openOn(map);
+    break;
+  }
 });
 
 /* ── GeoJSONレイヤーのポップアップ再バインド ── */
