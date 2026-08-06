@@ -119,9 +119,9 @@ pumpLayer.addTo(map);
 /* ─── 消火栓 ─── */
 const _hydrantIcon = L.icon({
   iconUrl: 'data/icons/消火栓.png',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -14]
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+  popupAnchor: [0, -11]
 });
 const hydrantLayer = L.geoJSON({
   "type": "FeatureCollection",
