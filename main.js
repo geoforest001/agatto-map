@@ -244,6 +244,19 @@ const hydrantLayer = L.geoJSON({
 });
 hydrantLayer.addTo(map);
 
+/* ─── 消火栓から60m ─── */
+const hydrant60mLayer = L.layerGroup(
+  hydrantLayer.getLayers().map(function(m) {
+    return L.circle(m.getLatLng(), {
+      radius: 60,
+      color: '#e31a1c',
+      weight: 1.5,
+      fillOpacity: 0
+    });
+  })
+);
+hydrant60mLayer.addTo(map);
+
 /* ─── 防火水槽 ─── */
 const _waterTankIcon = L.icon({
   iconUrl: 'data/icons/防火水槽.png',
@@ -300,7 +313,7 @@ map.getPane('gpxPane').style.zIndex = 460;
 const baseLayers = {};
 
 const overlays = { '住宅地図': jutakuTiles };
-const displayOverlays = { 'AED': aedLayer, 'ポンプ車庫': pumpLayer, '消火栓': hydrantLayer, '防火水槽': waterTankLayer, '組境界': kumiBoundaryLayer };
+const displayOverlays = { 'AED': aedLayer, 'ポンプ車庫': pumpLayer, '消火栓': hydrantLayer, '消火栓から60m': hydrant60mLayer, '防火水槽': waterTankLayer, '組境界': kumiBoundaryLayer };
 
 let layerControl;
 
