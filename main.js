@@ -73,6 +73,32 @@ window.pmLayers = {
 };
 
 
+/* ─── AED ─── */
+const _aedIcon = L.divIcon({
+  html: '<div style="background:#e53935;color:#fff;border-radius:4px;width:26px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">AED</div>',
+  className: '',
+  iconSize: [26, 18],
+  iconAnchor: [13, 9],
+  popupAnchor: [0, -12]
+});
+const aedLayer = L.geoJSON({
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.922313375616454,35.876498628254005]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.924777464198996,35.87602422723986]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.924241993759949,35.877186775345848]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.926881219793671,35.875545956482185]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.92702842926289,35.874091949167791]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.917928425115122,35.882615629934676]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.917398426416042,35.882233245373456]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.913331977216274,35.871864403667651]}}
+  ]
+}, {
+  pointToLayer: function(f, latlng) { return L.marker(latlng, { icon: _aedIcon }); },
+  onEachFeature: function(f, layer) { layer.bindPopup('<b>AED</b>'); }
+});
+aedLayer.addTo(map);
+
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
 map.createPane('gpxPane');
 map.getPane('gpxPane').style.zIndex = 460;
@@ -80,13 +106,14 @@ map.getPane('gpxPane').style.zIndex = 460;
 const baseLayers = {};
 
 const overlays = { '住宅地図': jutakuTiles };
+const displayOverlays = { 'AED': aedLayer };
 
 let layerControl;
 
 function renderLayerControl() {
   if (layerControl) map.removeControl(layerControl);
 
-  layerControl = L.control.layers(baseLayers, overlays, {
+  layerControl = L.control.layers(baseLayers, Object.assign({}, overlays, displayOverlays), {
     position: "topright",
     collapsed: false
   });
@@ -184,12 +211,18 @@ function renderLayerControl() {
   var bmSep = document.createElement('div'); bmSep.className = 'leaflet-control-layers-separator';
   base.appendChild(bmSep);
 
-  // ── オーバーレイ セクションラベル ──
-  var overlayLbl = document.createElement('div'); overlayLbl.className = 'lc-section-label'; overlayLbl.textContent = '連携可能レイヤ';
-  overlaysDiv.insertBefore(overlayLbl, overlaysDiv.firstChild);
-
-  var displayLbl = document.createElement('div'); displayLbl.className = 'lc-section-label'; displayLbl.textContent = '表示レイヤ';
-  overlaysDiv.appendChild(displayLbl);
+  // ── オーバーレイ セクションラベル（グループ順に注入）──
+  var insertIdx = 0;
+  [
+    { label: '連携可能レイヤ', layers: overlays },
+    { label: '表示レイヤ',     layers: displayOverlays }
+  ].forEach(function(group) {
+    var lbl = document.createElement('div');
+    lbl.className = 'lc-section-label';
+    lbl.textContent = group.label;
+    overlaysDiv.insertBefore(lbl, overlaysDiv.children[insertIdx] || null);
+    insertIdx += 1 + Object.keys(group.layers).length;
+  });
 
   if (window.innerWidth < 768) closePanel();
 }
