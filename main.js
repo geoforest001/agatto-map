@@ -188,6 +188,9 @@ function renderLayerControl() {
   var overlayLbl = document.createElement('div'); overlayLbl.className = 'lc-section-label'; overlayLbl.textContent = '連携可能レイヤ';
   overlaysDiv.insertBefore(overlayLbl, overlaysDiv.firstChild);
 
+  var displayLbl = document.createElement('div'); displayLbl.className = 'lc-section-label'; displayLbl.textContent = '表示レイヤ';
+  overlaysDiv.appendChild(displayLbl);
+
   if (window.innerWidth < 768) closePanel();
 }
 
