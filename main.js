@@ -244,6 +244,28 @@ const hydrantLayer = L.geoJSON({
 });
 hydrantLayer.addTo(map);
 
+/* ─── 防火水槽 ─── */
+const _waterTankIcon = L.icon({
+  iconUrl: 'data/icons/防火水槽.png',
+  iconSize: [32, 24],
+  iconAnchor: [16, 24],
+  popupAnchor: [0, -26]
+});
+const waterTankLayer = L.geoJSON({
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.91868064013764,35.87863726683098]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.9151239639547,35.87379294050824]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.91308632162296,35.8727203693166]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.91613452374287,35.871682501337375]}},
+    {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[137.91372613914092,35.870523351769855]}}
+  ]
+}, {
+  pointToLayer: function(f, latlng) { return L.marker(latlng, { icon: _waterTankIcon }); },
+  onEachFeature: function(f, layer) { layer.bindPopup('<b>防火水槽</b>'); }
+});
+waterTankLayer.addTo(map);
+
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
 map.createPane('gpxPane');
 map.getPane('gpxPane').style.zIndex = 460;
@@ -251,7 +273,7 @@ map.getPane('gpxPane').style.zIndex = 460;
 const baseLayers = {};
 
 const overlays = { '住宅地図': jutakuTiles };
-const displayOverlays = { 'AED': aedLayer, 'ポンプ車庫': pumpLayer, '消火栓': hydrantLayer };
+const displayOverlays = { 'AED': aedLayer, 'ポンプ車庫': pumpLayer, '消火栓': hydrantLayer, '防火水槽': waterTankLayer };
 
 let layerControl;
 
