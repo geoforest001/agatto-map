@@ -74,12 +74,11 @@ window.pmLayers = {
 
 
 /* ─── AED ─── */
-const _aedIcon = L.divIcon({
-  html: '<div style="background:#e53935;color:#fff;border-radius:4px;width:26px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">AED</div>',
-  className: '',
-  iconSize: [26, 18],
-  iconAnchor: [13, 9],
-  popupAnchor: [0, -12]
+const _aedIcon = L.icon({
+  iconUrl: 'data/icons/AED.png',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+  popupAnchor: [0, -16]
 });
 const aedLayer = L.geoJSON({
   "type": "FeatureCollection",
@@ -100,15 +99,21 @@ const aedLayer = L.geoJSON({
 aedLayer.addTo(map);
 
 /* ─── ポンプ車庫 ─── */
-const pumpLayer = L.geoJSON({
+const _pumpIcon = L.icon({
+  iconUrl: 'data/icons/ポンプ車.png',
+  iconSize: [40, 30],
+  iconAnchor: [20, 30],
+  popupAnchor: [0, -32]
+});
+const _pumpPolygon = L.geoJSON({
   "type": "FeatureCollection",
   "features": [
     {"type":"Feature","properties":{},"geometry":{"type":"MultiPolygon","coordinates":[[[[137.915689965886628,35.871248234096264],[137.91576393163632,35.871230469591026],[137.915744379682792,35.87117981738367],[137.915672778881003,35.871194731656956],[137.915689965886628,35.871248234096264]]]]}}
   ]
-}, {
-  style: { color: '#c62828', weight: 2, fillColor: '#ef9a9a', fillOpacity: 0.6 },
-  onEachFeature: function(f, layer) { layer.bindPopup('<b>🚒 ポンプ車庫</b>'); }
-});
+}, { style: { color: '#c62828', weight: 2, fillColor: '#ef9a9a', fillOpacity: 0.3 } });
+const _pumpMarker = L.marker([35.87121, 137.91572], { icon: _pumpIcon })
+  .bindPopup('<b>ポンプ車庫</b>');
+const pumpLayer = L.layerGroup([_pumpPolygon, _pumpMarker]);
 pumpLayer.addTo(map);
 
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
