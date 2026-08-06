@@ -99,6 +99,18 @@ const aedLayer = L.geoJSON({
 });
 aedLayer.addTo(map);
 
+/* ─── ポンプ車庫 ─── */
+const pumpLayer = L.geoJSON({
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","properties":{},"geometry":{"type":"MultiPolygon","coordinates":[[[[137.915689965886628,35.871248234096264],[137.91576393163632,35.871230469591026],[137.915744379682792,35.87117981738367],[137.915672778881003,35.871194731656956],[137.915689965886628,35.871248234096264]]]]}}
+  ]
+}, {
+  style: { color: '#c62828', weight: 2, fillColor: '#ef9a9a', fillOpacity: 0.6 },
+  onEachFeature: function(f, layer) { layer.bindPopup('<b>🚒 ポンプ車庫</b>'); }
+});
+pumpLayer.addTo(map);
+
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
 map.createPane('gpxPane');
 map.getPane('gpxPane').style.zIndex = 460;
@@ -106,7 +118,7 @@ map.getPane('gpxPane').style.zIndex = 460;
 const baseLayers = {};
 
 const overlays = { '住宅地図': jutakuTiles };
-const displayOverlays = { 'AED': aedLayer };
+const displayOverlays = { 'AED': aedLayer, 'ポンプ車庫': pumpLayer };
 
 let layerControl;
 
