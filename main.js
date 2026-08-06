@@ -65,7 +65,7 @@ jutakuTiles.addTo(map);
 
 // Excel連携用レイヤーレジストリ（excel.jsから参照）
 window.pmLayers = {
-  '住宅地図': {
+  '連携可能レイヤ': {
     layer: jutakuTiles,
     dataLayer: 'jutaku',
     keys: ['B_FID', '番地', 'Kanj_Ooa', 'Post_num']
@@ -79,7 +79,7 @@ map.getPane('gpxPane').style.zIndex = 460;
 
 const baseLayers = {};
 
-const overlays = { '住宅地図': jutakuTiles };
+const overlays = { '連携可能レイヤ': jutakuTiles };
 
 let layerControl;
 
