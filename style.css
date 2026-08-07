@@ -317,22 +317,27 @@ body {
 #bbsFormStatus { font-size: 11px; color: #888; text-align: center; margin-top: 6px; min-height: 16px; }
 #bbsLoadingMsg, #bbsEmptyMsg { text-align: center; color: #999; font-size: 12px; padding: 24px 0; }
 
-/* ---- 認証バー ---- */
-#bbsAuthBar {
+/* ---- 投稿者バー ---- */
+#bbsAuthorBar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
   padding: 7px 12px; background: #f9f9f9;
   border-bottom: 1px solid #eee; font-family: sans-serif; flex-shrink: 0;
 }
-.bbs-signin-btn {
-  padding: 5px 13px; background: #4285f4; color: #fff;
+#bbsAuthorBarLabel { font-size: 11px; color: #888; }
+#bbsAuthorBarName { font-size: 12px; font-weight: bold; color: #333; flex: 1; }
+#bbsAuthorEditBtn {
+  font-size: 12px; padding: 2px 7px; border: 1px solid #ddd;
+  border-radius: 6px; background: #f0f0f0; cursor: pointer;
+}
+#bbsAuthorEditor { display: flex; gap: 5px; align-items: center; width: 100%; margin-top: 4px; }
+#bbsAuthorInput {
+  flex: 1; border: 1px solid #ddd; border-radius: 7px;
+  padding: 5px 8px; font-size: 12px;
+}
+#bbsAuthorSaveBtn {
+  padding: 5px 12px; background: #06f; color: #fff;
   border: none; border-radius: 7px; font-size: 12px; font-weight: bold; cursor: pointer;
 }
-.bbs-signin-btn:hover { background: #1a6ae0; }
-.bbs-signout-btn {
-  padding: 3px 10px; background: #f0f0f0; color: #555;
-  border: 1px solid #ddd; border-radius: 6px; font-size: 11px; cursor: pointer;
-}
-.bbs-signout-btn:hover { background: #e0e0e0; }
 .bbs-author { font-size: 10px; color: #666; margin-top: 3px; }
 
 /* ---- トースト ---- */

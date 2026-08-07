@@ -1,5 +1,7 @@
 /* =============================================
-   現場掲示板 — Firebase Firestore + Google Auth
+   現場掲示板 — Firebase Firestore
+   投稿：名前入力のみ（認証不要）
+   削除：管理者（隠しログイン）のみ
    ============================================= */
 
 const firebaseConfig = {
@@ -24,44 +26,64 @@ let _bbsLat         = null;
 let _bbsLng         = null;
 let _bbsCurrentUser = null;
 
-/* ── 認証UI ── */
+/* ── 管理者認証（隠し） ── */
 _fbAuth.onAuthStateChanged(function(user) {
   _bbsCurrentUser = user;
-  var signedOut = document.getElementById('bbsSignedOut');
-  var signedIn  = document.getElementById('bbsSignedIn');
-  var newTab    = document.getElementById('bbsTabNew');
-  if (user) {
-    signedOut.style.display = 'none';
-    signedIn.style.display  = 'flex';
-    document.getElementById('bbsUserName').textContent = user.displayName || user.email || '';
-    var photo = document.getElementById('bbsUserPhoto');
-    if (user.photoURL) { photo.src = user.photoURL; photo.style.display = ''; }
-    else { photo.style.display = 'none'; }
-    newTab.style.display = '';
-  } else {
-    signedOut.style.display = 'flex';
-    signedIn.style.display  = 'none';
-    newTab.style.display    = 'none';
-    var newPane = document.getElementById('bbsNewPane');
-    if (newPane.style.display !== 'none') {
-      document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
-      document.getElementById('bbsTabList').classList.add('active');
-      document.getElementById('bbsListPane').style.display = '';
-      newPane.style.display = 'none';
+  _bbsRenderList();
+});
+
+/* パネルタイトルを5回タップで管理者ログイン/ログアウト */
+(function() {
+  var taps = 0, timer = null;
+  document.getElementById('bbsPanelTitle').addEventListener('click', function() {
+    taps++;
+    clearTimeout(timer);
+    timer = setTimeout(function() { taps = 0; }, 2000);
+    if (taps >= 5) {
+      taps = 0;
+      if (_bbsCurrentUser) {
+        _fbAuth.signOut().then(function() { toast('管理者ログアウト', 2000); });
+      } else {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        _fbAuth.signInWithPopup(provider)
+          .then(function() { toast('管理者ログイン完了', 2000); })
+          .catch(function(e) { toast('ログイン失敗: ' + e.message, 3000); });
+      }
     }
-  }
-});
-
-document.getElementById('bbsSignInBtn').addEventListener('click', function() {
-  var provider = new firebase.auth.GoogleAuthProvider();
-  _fbAuth.signInWithPopup(provider).catch(function(e) {
-    toast('ログインに失敗しました: ' + e.message, 3500);
   });
-});
+})();
 
-document.getElementById('bbsSignOutBtn').addEventListener('click', function() {
-  _fbAuth.signOut().then(function() { toast('ログアウトしました', 2000); });
-});
+/* ── 投稿者名管理 ── */
+function _bbsGetUserName() { return localStorage.getItem('bbsUserName') || ''; }
+function _bbsUpdateAuthorBar() {
+  document.getElementById('bbsAuthorBarName').textContent = _bbsGetUserName() || '未登録';
+}
+
+(function() {
+  var editBtn = document.getElementById('bbsAuthorEditBtn');
+  var editor  = document.getElementById('bbsAuthorEditor');
+  var input   = document.getElementById('bbsAuthorInput');
+  var saveBtn = document.getElementById('bbsAuthorSaveBtn');
+
+  editBtn.addEventListener('click', function() {
+    input.value = _bbsGetUserName();
+    editor.style.display = 'flex';
+    editBtn.style.display = 'none';
+    input.focus();
+  });
+
+  function saveAuthor() {
+    var name = input.value.trim();
+    if (!name) { toast('名前を入力してください', 1500); return; }
+    localStorage.setItem('bbsUserName', name);
+    _bbsUpdateAuthorBar();
+    editor.style.display = 'none';
+    editBtn.style.display = '';
+    toast('投稿者名を登録しました', 1500);
+  }
+  saveBtn.addEventListener('click', saveAuthor);
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') saveAuthor(); });
+})();
 
 /* ── データ取得 ── */
 async function _bbsFetchPosts() {
@@ -81,10 +103,10 @@ async function _bbsFetchPosts() {
   }
 }
 
-/* ── 削除 ── */
+/* ── 削除（管理者のみ） ── */
 async function _bbsDeleteById(id) {
+  if (!_bbsCurrentUser) return;
   if (!await showConfirm('この投稿を削除しますか？')) return;
-  if (!_bbsCurrentUser) { toast('ログインが必要です', 2000); return; }
   toast('削除中...', 3000);
   try {
     await _fbDb.collection('bbs_posts').doc(id).delete();
@@ -99,13 +121,11 @@ async function _bbsDeleteById(id) {
 function _bbsCatEmoji(cat) {
   return { '道路': '🛣', '河川': '💧', '土砂': '⛰', '施設': '🏢', 'その他': '📌' }[cat] || '📌';
 }
-
 function _bbsFmtTime(iso) {
   var d = new Date(iso);
   return (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
     String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
-
 function _bbsEsc(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -140,8 +160,8 @@ window._bbsOpenPhoto = function(id) { if (_bbsPhotoMap[id]) openPhoto(_bbsPhotoM
 
 /* ── 投稿一覧描画 ── */
 function _bbsRenderList() {
-  var listEl  = document.getElementById('bbsList');
-  var loadMsg = document.getElementById('bbsLoadingMsg');
+  var listEl   = document.getElementById('bbsList');
+  var loadMsg  = document.getElementById('bbsLoadingMsg');
   var emptyMsg = document.getElementById('bbsEmptyMsg');
   loadMsg.style.display = 'none';
   if (!_bbsPosts.length) { emptyMsg.style.display = 'block'; listEl.innerHTML = ''; return; }
@@ -184,11 +204,7 @@ function _bbsRenderList() {
 
     if (p.author) {
       var au = document.createElement('div');
-      au.className = 'bbs-author';
-      if (p.authorPhoto) {
-        au.innerHTML = '<img src="' + _bbsEsc(p.authorPhoto) + '" width="16" height="16" style="border-radius:50%;vertical-align:middle;margin-right:3px">';
-      }
-      au.innerHTML += _bbsEsc(p.author);
+      au.className = 'bbs-author'; au.textContent = '👤 ' + p.author;
       card.appendChild(au);
     }
 
@@ -232,6 +248,7 @@ function _bbsMarkSeen() {
 
 /* ── パネル開閉 ── */
 async function openBbsPanel() {
+  _bbsUpdateAuthorBar();
   bbsPanel.style.display = 'flex';
   bbsPanel.classList.remove('collapsed');
   bbsFloatBtn.classList.add('active');
@@ -397,26 +414,25 @@ document.getElementById('bbsPickPhotoBtn').addEventListener('click', function() 
 document.getElementById('bbsPhotoInput').addEventListener('change', function(e) { _bbsHandlePhoto(e.target.files[0]); e.target.value = ''; });
 document.getElementById('bbsPhotoPreview').addEventListener('click', function() { if (_bbsPhotoB64) openPhoto(_bbsPhotoB64); });
 
-/* ── 投稿 ── */
+/* ── 投稿（認証不要） ── */
 document.getElementById('bbsSubmitBtn').addEventListener('click', async function() {
-  if (!_bbsCurrentUser) { toast('Googleでログインしてから投稿してください', 2500); return; }
   var comment = document.getElementById('bbsComment').value.trim();
   var cat     = document.getElementById('bbsCatSel').value;
   if (!comment) { toast('コメントを入力してください', 2000); return; }
+  var author = _bbsGetUserName();
+  if (!author) { toast('先に投稿者名を登録してください', 2000); return; }
   var btn    = document.getElementById('bbsSubmitBtn');
   var status = document.getElementById('bbsFormStatus');
   btn.disabled = true; status.textContent = '投稿中...';
   try {
     await _fbDb.collection('bbs_posts').add({
-      ts:          firebase.firestore.FieldValue.serverTimestamp(),
-      cat:         cat,
-      comment:     comment,
-      author:      _bbsCurrentUser.displayName || _bbsCurrentUser.email || '',
-      authorUid:   _bbsCurrentUser.uid,
-      authorPhoto: _bbsCurrentUser.photoURL || '',
-      lat:         _bbsLat,
-      lng:         _bbsLng,
-      photo:       _bbsPhotoB64 || null
+      ts:      firebase.firestore.FieldValue.serverTimestamp(),
+      cat:     cat,
+      comment: comment,
+      author:  author,
+      lat:     _bbsLat,
+      lng:     _bbsLng,
+      photo:   _bbsPhotoB64 || null
     });
     document.getElementById('bbsComment').value = '';
     _bbsPhotoB64 = null; _bbsLat = null; _bbsLng = null;
