@@ -182,7 +182,7 @@
         })(0);
       };
       document.getElementById('bbsFloatBtn').addEventListener('click', function() {
-        _loadBbs(openBbsPanel);
+        _loadBbs(function() { openBbsPanel(); });
       }, { once: true });
     })();
     </script>
