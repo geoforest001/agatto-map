@@ -280,6 +280,12 @@ function _bbsUpdateLocStatus() {
 
 function _bbsAutoGetLoc() {
   if (_bbsLat != null) return;
+  if (window._lastKnownPos) {
+    _bbsLat = window._lastKnownPos.coords.latitude;
+    _bbsLng = window._lastKnownPos.coords.longitude;
+    _bbsUpdateLocStatus();
+    return;
+  }
   document.getElementById('bbsLocStatus').textContent = '📡 取得中...';
   document.getElementById('bbsLocStatus').style.color = '#888';
   navigator.geolocation.getCurrentPosition(
