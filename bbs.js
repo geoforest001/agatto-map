@@ -17,14 +17,16 @@ firebase.initializeApp(firebaseConfig);
 const _fbDb   = firebase.firestore();
 const _fbAuth = firebase.auth();
 
-let _bbsPosts       = [];
-let _bbsMarkers     = [];
-let _bbsPhotoMap    = {};
-let _bbsTimer       = null;
-let _bbsPhotoB64    = null;
-let _bbsLat         = null;
-let _bbsLng         = null;
-let _bbsCurrentUser = null;
+let _bbsPosts        = [];
+let _bbsMarkers      = [];
+let _bbsPhotoMap     = {};
+let _bbsTimer        = null;
+let _bbsPhotoB64     = null;
+let _bbsLat          = null;
+let _bbsLng          = null;
+let _bbsPhotoLat     = null;
+let _bbsPhotoLng     = null;
+let _bbsCurrentUser  = null;
 
 /* ── 管理者認証（隠し） ── */
 _fbAuth.onAuthStateChanged(function(user) {
@@ -274,6 +276,51 @@ function closeBbsPanel() {
   clearInterval(_bbsTimer); _bbsTimer = null;
 }
 
+/* ── 位置情報ステータス更新 ── */
+function _bbsUpdateLocStatus() {
+  var el = document.getElementById('bbsLocStatus');
+  if (_bbsLat != null) {
+    el.textContent = '📍 ' + _bbsLat.toFixed(5) + ', ' + _bbsLng.toFixed(5);
+    el.style.color = '#2e7d32';
+  } else {
+    el.textContent = '位置情報なし';
+    el.style.color = '#999';
+  }
+  document.getElementById('bbsUsePhotoLocBtn').style.display =
+    _bbsPhotoLat != null ? '' : 'none';
+}
+
+/* GPS自動取得（新規投稿タブを開いたとき） */
+function _bbsAutoGetLoc() {
+  if (_bbsLat != null) return;
+  document.getElementById('bbsLocStatus').textContent = '📡 取得中...';
+  document.getElementById('bbsLocStatus').style.color = '#888';
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      _bbsLat = pos.coords.latitude;
+      _bbsLng = pos.coords.longitude;
+      _bbsUpdateLocStatus();
+    },
+    function() {
+      document.getElementById('bbsLocStatus').textContent = '位置情報なし（取得失敗）';
+      document.getElementById('bbsLocStatus').style.color = '#999';
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+document.getElementById('bbsClearLocBtn').addEventListener('click', function() {
+  _bbsLat = null; _bbsLng = null;
+  _bbsUpdateLocStatus();
+});
+
+document.getElementById('bbsUsePhotoLocBtn').addEventListener('click', function() {
+  if (_bbsPhotoLat == null) return;
+  _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng;
+  _bbsUpdateLocStatus();
+  toast('写真の位置情報を使います', 1500);
+});
+
 /* ── タブ切り替え ── */
 document.querySelectorAll('.bbs-tab').forEach(function(btn) {
   btn.addEventListener('click', function() {
@@ -282,6 +329,7 @@ document.querySelectorAll('.bbs-tab').forEach(function(btn) {
     var tab = btn.dataset.tab;
     document.getElementById('bbsListPane').style.display = tab === 'list' ? '' : 'none';
     document.getElementById('bbsNewPane').style.display  = tab === 'new'  ? '' : 'none';
+    if (tab === 'new') _bbsAutoGetLoc();
   });
 });
 
@@ -330,19 +378,6 @@ document.getElementById('bbsRefreshBtn').addEventListener('click', async functio
   document.addEventListener('mouseup', function() { endDrag(); handle.style.cursor = 'grab'; });
 })();
 
-/* ── 位置情報 ── */
-document.getElementById('bbsGetLocBtn').addEventListener('click', function() {
-  document.getElementById('bbsLocStatus').textContent = '取得中...';
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      _bbsLat = pos.coords.latitude; _bbsLng = pos.coords.longitude;
-      document.getElementById('bbsLocStatus').textContent = _bbsLat.toFixed(5) + ', ' + _bbsLng.toFixed(5);
-    },
-    function() { document.getElementById('bbsLocStatus').textContent = '取得失敗'; },
-    { enableHighAccuracy: true, timeout: 15000 }
-  );
-});
-
 /* ── 写真圧縮 ── */
 function _bbsCompressPhoto(file) {
   return new Promise(function(resolve) {
@@ -367,22 +402,25 @@ function _bbsCompressPhoto(file) {
 
 async function _bbsHandlePhoto(file, fromCamera) {
   if (!file) return;
+  _bbsPhotoLat = null; _bbsPhotoLng = null;
   if (fromCamera) {
     if (window._lastKnownPos) {
-      _bbsLat = _lastKnownPos.coords.latitude;
-      _bbsLng = _lastKnownPos.coords.longitude;
-      document.getElementById('bbsLocStatus').textContent = '📍 ' + _bbsLat.toFixed(5) + ', ' + _bbsLng.toFixed(5);
+      _bbsPhotoLat = _lastKnownPos.coords.latitude;
+      _bbsPhotoLng = _lastKnownPos.coords.longitude;
     }
   } else {
     if (window.exifr) {
       try {
         var gps = await exifr.gps(file);
         if (gps && gps.latitude && gps.longitude) {
-          _bbsLat = gps.latitude; _bbsLng = gps.longitude;
-          document.getElementById('bbsLocStatus').textContent = '📷 ' + _bbsLat.toFixed(5) + ', ' + _bbsLng.toFixed(5);
+          _bbsPhotoLat = gps.latitude;
+          _bbsPhotoLng = gps.longitude;
         }
       } catch(_) {}
     }
+  }
+  if (_bbsPhotoLat != null) {
+    _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng;
   }
   document.getElementById('bbsTakePhotoBtn').textContent = '圧縮中...';
   document.getElementById('bbsPickPhotoBtn').textContent = '圧縮中...';
@@ -393,6 +431,7 @@ async function _bbsHandlePhoto(file, fromCamera) {
   }
   document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
   document.getElementById('bbsPickPhotoBtn').textContent = '🖼 ギャラリー';
+  _bbsUpdateLocStatus();
 }
 
 function _bbsOpenFileInput(useCamera) {
@@ -435,11 +474,11 @@ document.getElementById('bbsSubmitBtn').addEventListener('click', async function
       photo:   _bbsPhotoB64 || null
     });
     document.getElementById('bbsComment').value = '';
-    _bbsPhotoB64 = null; _bbsLat = null; _bbsLng = null;
+    _bbsPhotoB64 = null; _bbsLat = null; _bbsLng = null; _bbsPhotoLat = null; _bbsPhotoLng = null;
     document.getElementById('bbsPhotoPreview').style.display = 'none';
-    document.getElementById('bbsLocStatus').textContent = '未設定';
     document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
     document.getElementById('bbsPickPhotoBtn').textContent = '🖼 ギャラリー';
+    _bbsUpdateLocStatus();
     document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
     document.getElementById('bbsTabList').classList.add('active');
     document.getElementById('bbsListPane').style.display = '';
