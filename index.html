@@ -39,19 +39,21 @@
         <button id="bbsClose">✕</button>
       </div>
       <div id="bbsBody">
-        <!-- 投稿者バー -->
-        <div id="bbsAuthorBar">
-          <span id="bbsAuthorBarLabel">👤 投稿者：</span>
-          <span id="bbsAuthorBarName">未登録</span>
-          <div id="bbsAuthorEditor" style="display:none">
-            <input id="bbsAuthorInput" type="text" placeholder="名前を入力..." maxlength="20">
-            <button id="bbsAuthorSaveBtn">登録</button>
+        <!-- 認証バー -->
+        <div id="bbsAuthBar">
+          <div id="bbsSignedOut" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button id="bbsSignInBtn" class="bbs-signin-btn">🔑 Googleでログイン</button>
+            <span style="font-size:11px;color:#888">投稿するにはログインが必要です</span>
           </div>
-          <button id="bbsAuthorEditBtn">✏️</button>
+          <div id="bbsSignedIn" style="display:none;align-items:center;gap:6px;width:100%">
+            <img id="bbsUserPhoto" src="" width="22" height="22" style="border-radius:50%;display:none;flex-shrink:0">
+            <span id="bbsUserName" style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <button id="bbsSignOutBtn" class="bbs-signout-btn">ログアウト</button>
+          </div>
         </div>
         <div class="bbs-tabs">
           <button class="bbs-tab active" id="bbsTabList" data-tab="list">投稿一覧</button>
-          <button class="bbs-tab" id="bbsTabNew" data-tab="new">＋ 新規投稿</button>
+          <button class="bbs-tab" id="bbsTabNew" data-tab="new" style="display:none">＋ 新規投稿</button>
         </div>
         <div id="bbsListPane" class="bbs-pane">
           <div id="bbsLoadingMsg">読み込み中...</div>
@@ -148,8 +150,13 @@
     <script src="https://unpkg.com/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
     <script src="https://unpkg.com/exifr/dist/mini.legacy.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="./main.js?v=3"></script>
+    <script src="./main.js?v=4"></script>
     <script src="./weather.js?v=3"></script>
     <script src="./excel.js?v=2"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="./bbs.js?v=1"></script>
   </body>
 </html>
