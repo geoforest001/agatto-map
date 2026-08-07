@@ -142,7 +142,7 @@ function _bbsRenderMarkers() {
   _bbsPosts.forEach(function(p) {
     if (p.lat == null || p.lng == null) return;
     var ico = L.divIcon({
-      html: '<div style="background:#e53935;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);margin:-16px 0 0 -16px">📋</div>',
+      html: '<div style="background:#37474f;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);margin:-16px 0 0 -16px">📌</div>',
       iconSize: [32, 32], className: ''
     });
     var pop = '<div style="font-size:12px;max-width:230px"><span style="color:#aaa">' + _bbsFmtTime(p.ts) + '</span>';
