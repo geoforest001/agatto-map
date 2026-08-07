@@ -2,7 +2,10 @@
    現場掲示板 — Firebase Firestore
    投稿：名前入力のみ（認証不要）
    削除：管理者（隠しログイン）のみ
+   ※ index.html の遅延ローダーから _bbsStart() を呼び出す
    ============================================= */
+
+window._bbsStart = function() {
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCVJNDMILPbA4n0hSimX5d-WzcJO_n0oRQ',
@@ -14,19 +17,19 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const _fbDb   = firebase.firestore();
-const _fbAuth = firebase.auth();
+var _fbDb   = firebase.firestore();
+var _fbAuth = firebase.auth();
 
-let _bbsPosts        = [];
-let _bbsMarkers      = [];
-let _bbsPhotoMap     = {};
-let _bbsTimer        = null;
-let _bbsPhotoB64     = null;
-let _bbsLat          = null;
-let _bbsLng          = null;
-let _bbsPhotoLat     = null;
-let _bbsPhotoLng     = null;
-let _bbsCurrentUser  = null;
+var _bbsPosts        = [];
+var _bbsMarkers      = [];
+var _bbsPhotoMap     = {};
+var _bbsTimer        = null;
+var _bbsPhotoB64     = null;
+var _bbsLat          = null;
+var _bbsLng          = null;
+var _bbsPhotoLat     = null;
+var _bbsPhotoLng     = null;
+var _bbsCurrentUser  = null;
 
 /* ── 管理者認証（隠し） ── */
 _fbAuth.onAuthStateChanged(function(user) {
@@ -34,7 +37,6 @@ _fbAuth.onAuthStateChanged(function(user) {
   _bbsRenderList();
 });
 
-/* パネルタイトルを5回タップで管理者ログイン/ログアウト */
 (function() {
   var taps = 0, timer = null;
   document.getElementById('bbsPanelTitle').addEventListener('click', function() {
@@ -73,7 +75,6 @@ function _bbsUpdateAuthorBar() {
     editBtn.style.display = 'none';
     input.focus();
   });
-
   function saveAuthor() {
     var name = input.value.trim();
     if (!name) { toast('名前を入力してください', 1500); return; }
@@ -165,6 +166,7 @@ function _bbsRenderList() {
   var listEl   = document.getElementById('bbsList');
   var loadMsg  = document.getElementById('bbsLoadingMsg');
   var emptyMsg = document.getElementById('bbsEmptyMsg');
+  if (!listEl) return;
   loadMsg.style.display = 'none';
   if (!_bbsPosts.length) { emptyMsg.style.display = 'block'; listEl.innerHTML = ''; return; }
   emptyMsg.style.display = 'none';
@@ -173,61 +175,48 @@ function _bbsRenderList() {
   sorted.forEach(function(p) {
     var card = document.createElement('div');
     card.className = 'bbs-card';
-
     var hdr = document.createElement('div');
     hdr.className = 'bbs-card-header';
-
     var badge = document.createElement('span');
     badge.className = 'bbs-cat-badge';
     badge.textContent = _bbsCatEmoji(p.cat) + ' ' + p.cat;
-
     var ts = document.createElement('span');
     ts.className = 'bbs-time';
     ts.textContent = _bbsFmtTime(p.ts);
-
-    hdr.appendChild(badge);
-    hdr.appendChild(ts);
-
+    hdr.appendChild(badge); hdr.appendChild(ts);
     if (p.lat != null) {
       var jb = document.createElement('button');
       jb.className = 'bbs-icon-btn'; jb.textContent = '🗺 地図';
       jb.addEventListener('click', function() { map.setView([p.lat, p.lng], 16); closeBbsPanel(); });
       hdr.appendChild(jb);
     }
-
     if (_bbsCurrentUser) {
       var db = document.createElement('button');
       db.className = 'bbs-icon-btn'; db.textContent = '🗑'; db.style.color = '#c00';
       db.addEventListener('click', function() { _bbsDeleteById(p.id); });
       hdr.appendChild(db);
     }
-
     card.appendChild(hdr);
-
     if (p.author) {
       var au = document.createElement('div');
       au.className = 'bbs-author'; au.textContent = '👤 ' + p.author;
       card.appendChild(au);
     }
-
     var cm = document.createElement('div');
     cm.className = 'bbs-comment'; cm.textContent = p.comment || '';
     card.appendChild(cm);
-
     if (p.photo) {
       var img = document.createElement('img');
       img.src = p.photo; img.className = 'bbs-photo';
       img.addEventListener('click', function() { openPhoto(p.photo); });
       card.appendChild(img);
     }
-
     if (p.lat != null) {
       var loc = document.createElement('div');
       loc.className = 'bbs-loc';
       loc.textContent = '📍 ' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
       card.appendChild(loc);
     }
-
     listEl.appendChild(card);
   });
 }
@@ -249,7 +238,7 @@ function _bbsMarkSeen() {
 }
 
 /* ── パネル開閉 ── */
-async function openBbsPanel() {
+window.openBbsPanel = async function() {
   _bbsUpdateAuthorBar();
   bbsPanel.style.display = 'flex';
   bbsPanel.classList.remove('collapsed');
@@ -268,15 +257,15 @@ async function openBbsPanel() {
     if (await _bbsFetchPosts()) _bbsRenderMarkers();
     _bbsRenderList();
   }, 30000);
-}
+};
 
-function closeBbsPanel() {
+window.closeBbsPanel = function() {
   bbsPanel.style.display = 'none';
   bbsFloatBtn.classList.remove('active');
   clearInterval(_bbsTimer); _bbsTimer = null;
-}
+};
 
-/* ── 位置情報ステータス更新 ── */
+/* ── タブ切り替え ── */
 function _bbsUpdateLocStatus() {
   var el = document.getElementById('bbsLocStatus');
   if (_bbsLat != null) {
@@ -286,19 +275,16 @@ function _bbsUpdateLocStatus() {
     el.textContent = '位置情報なし';
     el.style.color = '#999';
   }
-  document.getElementById('bbsUsePhotoLocBtn').style.display =
-    _bbsPhotoLat != null ? '' : 'none';
+  document.getElementById('bbsUsePhotoLocBtn').style.display = _bbsPhotoLat != null ? '' : 'none';
 }
 
-/* GPS自動取得（新規投稿タブを開いたとき） */
 function _bbsAutoGetLoc() {
   if (_bbsLat != null) return;
   document.getElementById('bbsLocStatus').textContent = '📡 取得中...';
   document.getElementById('bbsLocStatus').style.color = '#888';
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      _bbsLat = pos.coords.latitude;
-      _bbsLng = pos.coords.longitude;
+      _bbsLat = pos.coords.latitude; _bbsLng = pos.coords.longitude;
       _bbsUpdateLocStatus();
     },
     function() {
@@ -310,10 +296,8 @@ function _bbsAutoGetLoc() {
 }
 
 document.getElementById('bbsClearLocBtn').addEventListener('click', function() {
-  _bbsLat = null; _bbsLng = null;
-  _bbsUpdateLocStatus();
+  _bbsLat = null; _bbsLng = null; _bbsUpdateLocStatus();
 });
-
 document.getElementById('bbsUsePhotoLocBtn').addEventListener('click', function() {
   if (_bbsPhotoLat == null) return;
   _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng;
@@ -321,7 +305,6 @@ document.getElementById('bbsUsePhotoLocBtn').addEventListener('click', function(
   toast('写真の位置情報を使います', 1500);
 });
 
-/* ── タブ切り替え ── */
 document.querySelectorAll('.bbs-tab').forEach(function(btn) {
   btn.addEventListener('click', function() {
     document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
@@ -337,16 +320,6 @@ bbsFloatBtn.addEventListener('click', function() {
   if (bbsPanel.style.display === 'flex') closeBbsPanel();
   else openBbsPanel();
 });
-
-/* ── 初回フェッチ・定期更新 ── */
-(async function() {
-  if (await _bbsFetchPosts()) _bbsRenderMarkers();
-  setInterval(async function() {
-    if (bbsPanel.style.display !== 'flex') {
-      if (await _bbsFetchPosts()) _bbsRenderMarkers();
-    }
-  }, 60000);
-})();
 
 document.getElementById('bbsClose').addEventListener('click', closeBbsPanel);
 document.getElementById('bbsCollapseBtn').addEventListener('click', function() { bbsPanel.classList.toggle('collapsed'); });
@@ -413,15 +386,12 @@ async function _bbsHandlePhoto(file, fromCamera) {
       try {
         var gps = await exifr.gps(file);
         if (gps && gps.latitude && gps.longitude) {
-          _bbsPhotoLat = gps.latitude;
-          _bbsPhotoLng = gps.longitude;
+          _bbsPhotoLat = gps.latitude; _bbsPhotoLng = gps.longitude;
         }
       } catch(_) {}
     }
   }
-  if (_bbsPhotoLat != null) {
-    _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng;
-  }
+  if (_bbsPhotoLat != null) { _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng; }
   document.getElementById('bbsTakePhotoBtn').textContent = '圧縮中...';
   document.getElementById('bbsPickPhotoBtn').textContent = '圧縮中...';
   _bbsPhotoB64 = await _bbsCompressPhoto(file);
@@ -493,3 +463,5 @@ document.getElementById('bbsSubmitBtn').addEventListener('click', async function
   }
   btn.disabled = false;
 });
+
+}; /* _bbsStart end */
