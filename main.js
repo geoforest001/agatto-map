@@ -632,6 +632,7 @@ if (navigator.geolocation) {
   navigator.geolocation.watchPosition(
     pos => {
       _lastKnownPos = pos;
+      window._lastKnownPos = pos;
       const latlng = [pos.coords.latitude, pos.coords.longitude];
       if (firstFix) {
         map.setView(latlng, currentLocationZoom);
