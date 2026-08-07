@@ -139,15 +139,13 @@ function _bbsEsc(s) {
 function _bbsRenderMarkers() {
   _bbsMarkers.forEach(function(m) { map.removeLayer(m); });
   _bbsMarkers = []; _bbsPhotoMap = {};
-  var catCol = { '道路': '#e65100', '河川': '#0277bd', '土砂': '#4e342e', '施設': '#2e7d32', 'その他': '#37474f' };
   _bbsPosts.forEach(function(p) {
     if (p.lat == null || p.lng == null) return;
-    var col = catCol[p.cat] || '#555';
     var ico = L.divIcon({
-      html: '<div style="background:' + col + ';color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);margin:-16px 0 0 -16px">' + _bbsCatEmoji(p.cat) + '</div>',
+      html: '<div style="background:#e53935;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);margin:-16px 0 0 -16px">📋</div>',
       iconSize: [32, 32], className: ''
     });
-    var pop = '<div style="font-size:12px;max-width:230px"><b>' + _bbsEsc(p.cat) + '</b> <span style="color:#aaa">' + _bbsFmtTime(p.ts) + '</span>';
+    var pop = '<div style="font-size:12px;max-width:230px"><span style="color:#aaa">' + _bbsFmtTime(p.ts) + '</span>';
     if (p.author) pop += ' <span style="color:#888">👤' + _bbsEsc(p.author) + '</span>';
     pop += '<br><div style="margin-top:4px">' + _bbsEsc(p.comment || '') + '</div>';
     if (p.photo) {
@@ -177,13 +175,10 @@ function _bbsRenderList() {
     card.className = 'bbs-card';
     var hdr = document.createElement('div');
     hdr.className = 'bbs-card-header';
-    var badge = document.createElement('span');
-    badge.className = 'bbs-cat-badge';
-    badge.textContent = _bbsCatEmoji(p.cat) + ' ' + p.cat;
     var ts = document.createElement('span');
     ts.className = 'bbs-time';
     ts.textContent = _bbsFmtTime(p.ts);
-    hdr.appendChild(badge); hdr.appendChild(ts);
+    hdr.appendChild(ts);
     if (p.lat != null) {
       var jb = document.createElement('button');
       jb.className = 'bbs-icon-btn'; jb.textContent = '🗺 地図';
@@ -432,7 +427,6 @@ document.getElementById('bbsPhotoPreview').addEventListener('click', function() 
 /* ── 投稿（認証不要） ── */
 document.getElementById('bbsSubmitBtn').addEventListener('click', async function() {
   var comment = document.getElementById('bbsComment').value.trim();
-  var cat     = document.getElementById('bbsCatSel').value;
   if (!comment) { toast('コメントを入力してください', 2000); return; }
   var author = _bbsGetUserName();
   if (!author) { toast('先に投稿者名を登録してください', 2000); return; }
@@ -442,7 +436,6 @@ document.getElementById('bbsSubmitBtn').addEventListener('click', async function
   try {
     await _fbDb.collection('bbs_posts').add({
       ts:      firebase.firestore.FieldValue.serverTimestamp(),
-      cat:     cat,
       comment: comment,
       author:  author,
       lat:     _bbsLat,
