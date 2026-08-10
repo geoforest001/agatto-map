@@ -787,3 +787,106 @@ if (navigator.geolocation) {
     if (e.key === 'Escape') document.getElementById('printCancel').click();
   });
 })();
+
+/* ─── ドラッグ&ドロップ レイヤ読込 ─── */
+const droppedLayerGroup = L.layerGroup().addTo(map);
+var _dragDepth = 0;
+var _dropOverlay = document.getElementById('dropOverlay');
+var _toGeoJSONLib = null;
+
+function _loadDropScript(src) {
+  return new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.body.appendChild(s);
+  });
+}
+
+async function _getToGeoJSON() {
+  if (_toGeoJSONLib) return _toGeoJSONLib;
+  await _loadDropScript('https://cdn.jsdelivr.net/npm/@mapbox/togeojson@0.16.0/togeojson.js');
+  _toGeoJSONLib = window.toGeoJSON;
+  return _toGeoJSONLib;
+}
+
+function _makeDroppedLayer(geojson) {
+  return L.geoJSON(geojson, {
+    style: function() { return { color: '#ff0066', weight: 2, fillOpacity: 0.18 }; },
+    onEachFeature: function(ft, l) {
+      var props = ft.properties || {};
+      var rows = Object.entries(props)
+        .filter(function(kv) { return kv[1] !== null && kv[1] !== ''; })
+        .map(function(kv) { return '<b>' + kv[0] + '</b>: ' + kv[1]; });
+      if (rows.length) l.bindPopup(rows.join('<br>'), { maxWidth: 300 });
+    }
+  });
+}
+
+function _addDroppedGeoJSON(gj, label) {
+  try {
+    var layer = _makeDroppedLayer(gj);
+    droppedLayerGroup.addLayer(layer);
+    var bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.1));
+    toast(label + ' 読み込み完了');
+  } catch(e) {
+    toast(label + ' 表示失敗: ' + e.message, 4000);
+  }
+}
+
+async function _handleDroppedFile(file) {
+  var ext = file.name.toLowerCase().split('.').pop();
+
+  if (ext === 'geojson' || ext === 'json') {
+    var r = new FileReader();
+    r.onload = function() {
+      try { _addDroppedGeoJSON(JSON.parse(r.result), file.name); }
+      catch(e) { toast('GeoJSONの解析に失敗しました', 3000); }
+    };
+    r.readAsText(file);
+    return;
+  }
+
+  if (ext === 'gpx') {
+    toast('GPXを読み込み中...', 3000);
+    try {
+      var tgj = await _getToGeoJSON();
+      var text = await file.text();
+      var dom = new DOMParser().parseFromString(text, 'text/xml');
+      _addDroppedGeoJSON(tgj.gpx(dom), file.name);
+    } catch(e) { toast('GPXの読み込みに失敗しました', 3000); }
+    return;
+  }
+
+  if (ext === 'kml') {
+    toast('KMLを読み込み中...', 3000);
+    try {
+      var tgj = await _getToGeoJSON();
+      var text = await file.text();
+      var dom = new DOMParser().parseFromString(text, 'text/xml');
+      _addDroppedGeoJSON(tgj.kml(dom), file.name);
+    } catch(e) { toast('KMLの読み込みに失敗しました', 3000); }
+    return;
+  }
+
+  toast('対応形式: GeoJSON / GPX / KML', 3000);
+}
+
+document.addEventListener('dragenter', function(e) {
+  e.preventDefault();
+  _dragDepth++;
+  if (_dragDepth === 1) _dropOverlay.classList.add('active');
+});
+document.addEventListener('dragleave', function() {
+  _dragDepth--;
+  if (_dragDepth <= 0) { _dragDepth = 0; _dropOverlay.classList.remove('active'); }
+});
+document.addEventListener('dragover', function(e) { e.preventDefault(); });
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  _dragDepth = 0;
+  _dropOverlay.classList.remove('active');
+  var files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  files.forEach(function(f) { _handleDroppedFile(f); });
+});
