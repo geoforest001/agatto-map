@@ -709,6 +709,9 @@ table.xl-popup .xl-row th { color:#0066ff; }
 }
 .bbs-back-btn:active { background: #e8e8e8; }
 
+/* スケールバーは通常時非表示、印刷時のみ表示 */
+.leaflet-control-scale { display: none; }
+
 /* ─── ズーム＋印刷ボタン 横並び ─── */
 .leaflet-top.leaflet-left {
   display: flex;
@@ -816,7 +819,9 @@ table.xl-popup .xl-row th { color:#0066ff; }
   #xlsxModal, #xlsxStatCard, #xlsxLegend,
   #toast, #printFrame, #printModal,
   .leaflet-control-zoom, .leaflet-control-attribution,
-  .leaflet-control-layers, .leaflet-control-scale { display: none !important; }
+  .leaflet-control-layers { display: none !important; }
+
+  .leaflet-control-scale { display: block !important; }
 
   html, body { margin: 0; padding: 0; }
 

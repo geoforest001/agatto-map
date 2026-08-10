@@ -454,6 +454,9 @@ printControl.onAdd = function() {
 };
 printControl.addTo(map);
 
+/* ─── スケールバー（印刷時のみ表示） ─── */
+L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+
 /* =========================
    ユーティリティ
 ========================= */
