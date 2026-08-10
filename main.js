@@ -458,7 +458,7 @@ function renderLayerControl() {
   [
     { label: '連携可能レイヤ', layers: overlays,       sub: false },
     { label: '表示レイヤ',     layers: displayOverlays, sub: false },
-    { label: '🔥 消火施設',    layers: fireOverlays,    sub: true  }
+    { label: '消火施設レイヤ',  layers: fireOverlays,    sub: true  }
   ].forEach(function(group) {
     var lbl = document.createElement('div');
     lbl.className = group.sub ? 'lc-section-label lc-sub-label' : 'lc-section-label';
