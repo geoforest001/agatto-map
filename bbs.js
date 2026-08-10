@@ -144,9 +144,13 @@ function _bbsRenderMarkers() {
   _bbsPosts.forEach(function(p) {
     if (p.lat == null || p.lng == null) return;
     var tl = _bbsTypeLabel(p);
+    var isSos = p.type === 'sos';
+    var sz = isSos ? 50 : 34;
+    var fsz = isSos ? 24 : 17;
+    var half = sz / 2;
     var ico = L.divIcon({
-      html: '<div style="background:' + tl.color + ';color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);margin:-17px 0 0 -17px">' + tl.icon + '</div>',
-      iconSize: [34, 34], className: ''
+      html: '<div style="background:' + tl.color + ';color:#fff;border-radius:50%;width:' + sz + 'px;height:' + sz + 'px;display:flex;align-items:center;justify-content:center;font-size:' + fsz + 'px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin:-' + half + 'px 0 0 -' + half + 'px">' + tl.icon + '</div>',
+      iconSize: [sz, sz], className: ''
     });
     var pop = '<div style="font-size:12px;max-width:230px">';
     pop += '<b>' + _bbsEsc(tl.label) + '</b> <span style="color:#aaa">' + _bbsFmtTime(p.ts) + '</span>';
@@ -158,7 +162,7 @@ function _bbsRenderMarkers() {
       pop += '<img src="' + p.photo + '" style="max-width:210px;max-height:130px;border-radius:6px;margin-top:6px;cursor:pointer;display:block" onclick="_bbsOpenPhoto(\'' + p.id + '\')">';
     }
     pop += '</div>';
-    var mk = L.marker([p.lat, p.lng], { icon: ico }).addTo(map).bindPopup(pop, { maxWidth: 240 });
+    var mk = L.marker([p.lat, p.lng], { icon: ico, zIndexOffset: isSos ? 1000 : 0 }).addTo(map).bindPopup(pop, { maxWidth: 240 });
     _bbsMarkers.push(mk);
   });
 }
