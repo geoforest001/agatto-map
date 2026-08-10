@@ -22,6 +22,7 @@ var _fbAuth = firebase.auth();
 var _bbsPosts       = [];
 var _bbsMarkers     = [];
 var _bbsPhotoMap    = {};
+var _bbsNewestTs    = null; // 差分取得用: 最新投稿の Firestore Timestamp
 var _bbsTimer       = null;
 var _bbsPhotoB64    = null;
 var _bbsLat         = null;
@@ -94,15 +95,42 @@ document.querySelectorAll('.bbs-back-btn').forEach(function(btn) {
   btn.addEventListener('click', _bbsShowTypePane);
 });
 
-/* ── データ取得 ── */
+/* ── データ取得（初回は全件、以降は差分のみ） ── */
 async function _bbsFetchPosts() {
   try {
-    var snap = await _fbDb.collection('bbs_posts').orderBy('ts', 'desc').limit(200).get();
-    _bbsPosts = snap.docs.map(function(d) {
-      var data = d.data();
-      var ts = data.ts && data.ts.toDate ? data.ts.toDate().toISOString() : (data.ts || new Date().toISOString());
-      return Object.assign({}, data, { id: d.id, ts: ts });
+    var col = _fbDb.collection('bbs_posts');
+    var snap;
+    var isIncremental = !!_bbsNewestTs;
+
+    if (isIncremental) {
+      snap = await col.orderBy('ts', 'desc').where('ts', '>', _bbsNewestTs).get();
+    } else {
+      snap = await col.orderBy('ts', 'desc').limit(200).get();
+    }
+
+    var mapped = snap.docs.map(function(d) {
+      var data  = d.data();
+      var rawTs = data.ts;
+      var ts    = rawTs && rawTs.toDate ? rawTs.toDate().toISOString() : (rawTs || new Date().toISOString());
+      return Object.assign({}, data, { id: d.id, ts: ts, _rawTs: rawTs });
     });
+
+    if (isIncremental) {
+      if (!mapped.length) return false;
+      var existingIds = new Set(_bbsPosts.map(function(p) { return p.id; }));
+      var fresh = mapped.filter(function(p) { return !existingIds.has(p.id); });
+      if (!fresh.length) return false;
+      _bbsPosts = fresh.concat(_bbsPosts);
+    } else {
+      _bbsPosts = mapped;
+    }
+
+    // 最新 Firestore Timestamp を更新
+    _bbsPosts.forEach(function(p) {
+      if (!p._rawTs) return;
+      if (!_bbsNewestTs || p._rawTs.seconds > _bbsNewestTs.seconds) _bbsNewestTs = p._rawTs;
+    });
+
     _bbsCheckNew();
     return true;
   } catch(e) {
@@ -190,8 +218,6 @@ function _bbsRenderList() {
   if (!_bbsPosts.length) { emptyMsg.style.display = 'block'; listEl.innerHTML = ''; return; }
   emptyMsg.style.display = 'none';
   var sorted = _bbsPosts.slice().sort(function(a, b) {
-    if (a.type === 'sos' && b.type !== 'sos') return -1;
-    if (a.type !== 'sos' && b.type === 'sos') return 1;
     return new Date(b.ts) - new Date(a.ts);
   });
   listEl.innerHTML = '';
