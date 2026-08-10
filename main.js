@@ -465,10 +465,17 @@ function renderLayerControl() {
     insertIdx += 1 + Object.keys(group.layers).length;
   });
 
-  var xlsxSep = document.createElement('div');
-  xlsxSep.className = 'leaflet-control-layers-separator';
-  lcList.appendChild(xlsxSep);
-  lcList.appendChild(xlsxBtn);
+  /* Excel連携ボタンは気象レイヤ（DOMContentLoaded で追加）の直後に挿入 */
+  window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      var ov = document.querySelector('.leaflet-control-layers-overlays');
+      if (!ov) return;
+      var sep = document.createElement('div');
+      sep.className = 'leaflet-control-layers-separator';
+      ov.appendChild(sep);
+      ov.appendChild(xlsxBtn);
+    }, 0);
+  });
 
   if (window.innerWidth < 768) closePanel();
 }
