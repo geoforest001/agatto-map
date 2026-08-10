@@ -337,6 +337,18 @@ const kumiBoundaryLayer = L.geoJSON({
   style: { color: '#2f0ef6', weight: 2, fillOpacity: 0 },
   onEachFeature: function(f, layer) {
     layer.bindPopup('<b>' + f.properties['組名'] + '</b>');
+    layer.on('click', function() {
+      if (kumiBoundaryLayer._selectedLayer && kumiBoundaryLayer._selectedLayer !== layer) {
+        kumiBoundaryLayer._selectedLayer.setStyle({ color: '#2f0ef6', weight: 2, fillColor: null, fillOpacity: 0 });
+      }
+      if (kumiBoundaryLayer._selectedLayer === layer) {
+        layer.setStyle({ color: '#2f0ef6', weight: 2, fillColor: null, fillOpacity: 0 });
+        kumiBoundaryLayer._selectedLayer = null;
+      } else {
+        layer.setStyle({ color: '#e53935', weight: 2.5, fillColor: '#e53935', fillOpacity: 0.25 });
+        kumiBoundaryLayer._selectedLayer = layer;
+      }
+    });
   }
 });
 kumiBoundaryLayer.addTo(map);
