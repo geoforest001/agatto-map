@@ -146,10 +146,12 @@ function _bbsRenderMarkers() {
     var tl = _bbsTypeLabel(p);
     var isSos = p.type === 'sos';
     var sz = isSos ? 50 : 34;
-    var fsz = isSos ? 24 : 17;
     var half = sz / 2;
+    var icoHtml = isSos
+      ? '<div style="background:linear-gradient(160deg,#ef5350 0%,#c62828 55%,#8e0000 100%);color:#fff;border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:sans-serif;letter-spacing:0.05em;border:3px solid #fff;box-shadow:0 4px 0 #7b0000,0 6px 14px rgba(140,0,0,0.55),inset 0 1px 3px rgba(255,255,255,0.25);margin:-25px 0 0 -25px;text-shadow:0 1px 2px rgba(0,0,0,0.4)">SOS</div>'
+      : '<div style="background:' + tl.color + ';color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin:-17px 0 0 -17px">' + tl.icon + '</div>';
     var ico = L.divIcon({
-      html: '<div style="background:' + tl.color + ';color:#fff;border-radius:50%;width:' + sz + 'px;height:' + sz + 'px;display:flex;align-items:center;justify-content:center;font-size:' + fsz + 'px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin:-' + half + 'px 0 0 -' + half + 'px">' + tl.icon + '</div>',
+      html: icoHtml,
       iconSize: [sz, sz], className: ''
     });
     var pop = '<div style="font-size:12px;max-width:230px">';
