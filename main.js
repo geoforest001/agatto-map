@@ -397,7 +397,6 @@ function renderLayerControl() {
   xlsxBtn.innerHTML = '<span class="ico">📊</span><span>Excel連携</span>';
   xlsxBtn.addEventListener('click', function() { if(window.xlsxOpenFile) xlsxOpenFile(); });
   tbDiv.appendChild(curBtn);
-  tbDiv.appendChild(xlsxBtn);
   lcList.insertBefore(tbDiv, lcList.firstChild);
 
   curBtn.addEventListener('click', function() {
@@ -465,6 +464,11 @@ function renderLayerControl() {
     overlaysDiv.insertBefore(lbl, overlaysDiv.children[insertIdx] || null);
     insertIdx += 1 + Object.keys(group.layers).length;
   });
+
+  var xlsxSep = document.createElement('div');
+  xlsxSep.className = 'leaflet-control-layers-separator';
+  lcList.appendChild(xlsxSep);
+  lcList.appendChild(xlsxBtn);
 
   if (window.innerWidth < 768) closePanel();
 }
