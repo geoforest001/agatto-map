@@ -302,10 +302,6 @@ function renderLayerControl() {
   xlsxBtn.innerHTML = '<span class="ico">📊</span><span>Excel連携</span>';
   xlsxBtn.addEventListener('click', function() { if(window.xlsxOpenFile) xlsxOpenFile(); });
 
-  var printBtn = document.createElement('button');
-  printBtn.className = 'tb-btn'; printBtn.id = 'btnPrint';
-  printBtn.innerHTML = '<span class="ico">🖨️</span><span>印刷</span>';
-  printBtn.addEventListener('click', function() { if(window._openPrintFrame) window._openPrintFrame(); });
   tbDiv.appendChild(curBtn);
   lcList.insertBefore(tbDiv, lcList.firstChild);
 
@@ -427,10 +423,6 @@ function renderLayerControl() {
       sep.className = 'leaflet-control-layers-separator';
       ov.appendChild(sep);
       ov.appendChild(xlsxBtn);
-      var sep2 = document.createElement('div');
-      sep2.className = 'leaflet-control-layers-separator';
-      ov.appendChild(sep2);
-      ov.appendChild(printBtn);
     }, 0);
   });
 
@@ -447,6 +439,20 @@ brandingControl.onAdd = function() {
   return div;
 };
 brandingControl.addTo(map);
+
+/* ─── 印刷ボタン（ズームコントロール隣） ─── */
+const printControl = L.control({ position: 'topleft' });
+printControl.onAdd = function() {
+  var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+  div.innerHTML = '<a id="btnPrint" href="#" title="印刷" role="button" aria-label="印刷" style="font-size:16px;line-height:30px;">🖨️</a>';
+  div.querySelector('a').addEventListener('click', function(e) {
+    e.preventDefault();
+    if (window._openPrintFrame) window._openPrintFrame();
+  });
+  L.DomEvent.disableClickPropagation(div);
+  return div;
+};
+printControl.addTo(map);
 
 /* =========================
    ユーティリティ
