@@ -195,8 +195,8 @@ function _bbsRenderList() {
     hdr.className = 'bbs-card-header';
 
     var badge = document.createElement('span');
-    badge.className = isSos ? 'bbs-cat-badge sos' : 'bbs-cat-badge';
-    if (!isSos) badge.style.background = tl.color;
+    badge.className = 'bbs-cat-badge';
+    badge.style.background = tl.color;
     badge.textContent = tl.icon + ' ' + tl.label;
 
     var ts = document.createElement('span');
