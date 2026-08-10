@@ -279,7 +279,15 @@
         _loadBbs(function() { openBbsPanel(); });
       }, { once: true });
 
-      /* SOSボタン */
+      /* SOSボタン — アニメーション（iOS対応） */
+      (function() {
+        var btn = document.getElementById('sosBtn');
+        btn.addEventListener('touchstart', function() { btn.classList.add('pressed'); }, { passive: true });
+        btn.addEventListener('touchend',   function() { btn.classList.remove('pressed'); }, { passive: true });
+        btn.addEventListener('touchcancel',function() { btn.classList.remove('pressed'); }, { passive: true });
+      })();
+
+      /* SOSボタン — 送信 */
       document.getElementById('sosBtn').addEventListener('click', function() {
         var reg = _getReg();
         if (!reg.kumi || !reg.name) {
@@ -288,8 +296,10 @@
           });
           return;
         }
+        toast('🆘 SOS処理中...', 4000);
         _loadBbs(function() {
           if (typeof window._bbsSendSOS === 'function') window._bbsSendSOS();
+          else toast('SOS機能を読み込めませんでした', 3000);
         });
       });
     })();

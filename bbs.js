@@ -15,7 +15,7 @@ var firebaseConfig = {
   appId: '1:694313355581:web:e351429ad4e68819b61d54'
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 var _fbDb   = firebase.firestore();
 var _fbAuth = firebase.auth();
 
@@ -404,7 +404,7 @@ async function _bbsHandlePhoto(file, fromCamera) {
   if (!file) return;
   _bbsPhotoLat = null; _bbsPhotoLng = null;
   if (fromCamera) {
-    if (window._lastKnownPos) { _bbsPhotoLat = _lastKnownPos.coords.latitude; _bbsPhotoLng = _lastKnownPos.coords.longitude; }
+    if (window._lastKnownPos) { _bbsPhotoLat = window._lastKnownPos.coords.latitude; _bbsPhotoLng = window._lastKnownPos.coords.longitude; }
   } else {
     if (window.exifr) {
       try {
