@@ -11,7 +11,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="./style.css?v=9" />
+    <link rel="stylesheet" href="./style.css?v=10" />
   </head>
   <body>
     <main class="page">
@@ -25,6 +25,46 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
+
+    <!-- 初期登録モーダル -->
+    <div id="regModal" style="display:none">
+      <div id="regBox">
+        <div id="regTitle">📍 上戸区防災マップ</div>
+        <div id="regSubtitle">はじめに情報を登録してください</div>
+        <div class="reg-field">
+          <label>組名</label>
+          <select id="regKumi">
+            <option value="">── 選択してください ──</option>
+            <optgroup label="南部">
+              <option>南部1組</option>
+              <option>南部2組</option>
+              <option>南部3組</option>
+              <option>南部4組</option>
+            </optgroup>
+            <optgroup label="北部">
+              <option>北部1組</option>
+              <option>北部2組</option>
+              <option>北部3組</option>
+              <option>北部4組</option>
+              <option>北部5組</option>
+              <option>北部6組</option>
+              <option>北部7組</option>
+              <option>北部8組</option>
+              <option>北部9組</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="reg-field">
+          <label>氏名</label>
+          <input id="regName" type="text" placeholder="氏名を入力..." maxlength="20">
+        </div>
+        <div id="regError"></div>
+        <button id="regSubmit">登録して始める</button>
+      </div>
+    </div>
+
+    <!-- SOSボタン -->
+    <button id="sosBtn" title="緊急SOS">SOS</button>
 
     <!-- 地域掲示板 フロートボタン -->
     <button id="bbsFloatBtn">📋 地域掲示板<span id="bbsBadge"></span></button>
@@ -41,13 +81,9 @@
       <div id="bbsBody">
         <!-- 投稿者バー -->
         <div id="bbsAuthorBar">
-          <span id="bbsAuthorBarLabel">👤 投稿者：</span>
-          <span id="bbsAuthorBarName">未登録</span>
-          <div id="bbsAuthorEditor" style="display:none">
-            <input id="bbsAuthorInput" type="text" placeholder="名前を入力..." maxlength="20">
-            <button id="bbsAuthorSaveBtn">登録</button>
-          </div>
-          <button id="bbsAuthorEditBtn">✏️</button>
+          <span id="bbsAuthorBarLabel">👤</span>
+          <span id="bbsAuthorBarInfo">未登録</span>
+          <button id="bbsAuthorEditBtn">変更</button>
         </div>
         <div class="bbs-tabs">
           <button class="bbs-tab active" id="bbsTabList" data-tab="list">投稿一覧</button>
@@ -59,25 +95,50 @@
           <div id="bbsList"></div>
         </div>
         <div id="bbsNewPane" class="bbs-pane" style="display:none">
+          <!-- 投稿タイプ選択 -->
           <div class="bbs-field">
-            <label>コメント <span style="color:#c00">*</span></label>
-            <textarea id="bbsComment" rows="3" placeholder="状況を入力..."></textarea>
-          </div>
-          <div class="bbs-field">
-            <label>写真（任意）</label>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="bbs-action-btn" id="bbsTakePhotoBtn">📷 撮影する</button>
-              <button class="bbs-action-btn" id="bbsPickPhotoBtn">🖼 ギャラリー</button>
+            <label>投稿タイプ</label>
+            <div style="display:flex;gap:6px">
+              <button class="bbs-type-btn active" data-type="safety">🔰 安否確認</button>
+              <button class="bbs-type-btn" data-type="disaster">⚠️ 災害発見</button>
             </div>
-            <input id="bbsPhotoInput" type="file" accept="image/*" style="display:none">
-            <img id="bbsPhotoPreview" style="display:none;max-width:120px;max-height:80px;border-radius:6px;margin-top:6px;cursor:pointer">
           </div>
-          <div class="bbs-field">
-            <label>位置情報</label>
-            <span id="bbsLocStatus" style="font-size:12px;color:#555">取得中...</span>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">
-              <button class="bbs-action-btn" id="bbsClearLocBtn">✕ 位置情報を消す</button>
-              <button class="bbs-action-btn" id="bbsUsePhotoLocBtn" style="display:none">📷 写真の位置を使う</button>
+          <!-- 安否確認フォーム -->
+          <div id="bbsSafetyPane">
+            <div class="bbs-field">
+              <label>状況</label>
+              <select id="bbsStatusSel">
+                <option value="全員無事を確認">✅ 全員無事を確認</option>
+                <option value="異常あり">⚠️ 異常あり</option>
+              </select>
+            </div>
+            <div class="bbs-field">
+              <label>コメント（任意）</label>
+              <textarea id="bbsSafetyComment" rows="2" placeholder="補足があれば入力..."></textarea>
+            </div>
+          </div>
+          <!-- 災害発見フォーム -->
+          <div id="bbsDisasterPane" style="display:none">
+            <div class="bbs-field">
+              <label>コメント <span style="color:#c00">*</span></label>
+              <textarea id="bbsDisasterComment" rows="3" placeholder="状況を入力..."></textarea>
+            </div>
+            <div class="bbs-field">
+              <label>写真（任意）</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="bbs-action-btn" id="bbsTakePhotoBtn">📷 撮影する</button>
+                <button class="bbs-action-btn" id="bbsPickPhotoBtn">🖼 ギャラリー</button>
+              </div>
+              <input id="bbsPhotoInput" type="file" accept="image/*" style="display:none">
+              <img id="bbsPhotoPreview" style="display:none;max-width:120px;max-height:80px;border-radius:6px;margin-top:6px;cursor:pointer">
+            </div>
+            <div class="bbs-field">
+              <label>位置情報</label>
+              <span id="bbsLocStatus" style="font-size:12px;color:#555">取得中...</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">
+                <button class="bbs-action-btn" id="bbsClearLocBtn">✕ 位置情報を消す</button>
+                <button class="bbs-action-btn" id="bbsUsePhotoLocBtn" style="display:none">📷 写真の位置を使う</button>
+              </div>
             </div>
           </div>
           <button id="bbsSubmitBtn">📤 投稿する</button>
@@ -142,9 +203,50 @@
     <script src="./main.js?v=5"></script>
     <script src="./weather.js?v=3"></script>
     <script src="./excel.js?v=2"></script>
-    <!-- 掲示板：BBSボタンを押したときだけFirebase+bbs.jsを読み込む -->
+
+    <!-- 初期登録 + Firebase遅延ロード + SOS -->
     <script>
     (function() {
+      /* ── 登録 ── */
+      function _getReg() {
+        return {
+          kumi: localStorage.getItem('uedoBbsKumi') || '',
+          name: localStorage.getItem('uedoBbsName') || ''
+        };
+      }
+      function _saveReg(kumi, name) {
+        localStorage.setItem('uedoBbsKumi', kumi);
+        localStorage.setItem('uedoBbsName', name);
+      }
+
+      window._openRegModal = function(onComplete) {
+        var reg = _getReg();
+        document.getElementById('regKumi').value = reg.kumi || '';
+        document.getElementById('regName').value  = reg.name  || '';
+        document.getElementById('regError').textContent = '';
+        document.getElementById('regModal').style.display = 'flex';
+        document.getElementById('regSubmit').onclick = function() {
+          var kumi = document.getElementById('regKumi').value;
+          var name = document.getElementById('regName').value.trim();
+          var err  = document.getElementById('regError');
+          if (!kumi) { err.textContent = '組名を選択してください'; return; }
+          if (!name) { err.textContent = '氏名を入力してください'; return; }
+          _saveReg(kumi, name);
+          document.getElementById('regModal').style.display = 'none';
+          if (typeof onComplete === 'function') onComplete();
+        };
+        document.getElementById('regName').onkeydown = function(e) {
+          if (e.key === 'Enter') document.getElementById('regSubmit').click();
+        };
+      };
+
+      /* 初回訪問時に登録モーダルを表示 */
+      window.addEventListener('load', function() {
+        var reg = _getReg();
+        if (!reg.kumi || !reg.name) window._openRegModal(function() {});
+      });
+
+      /* ── Firebase 遅延ロード ── */
       var _loaded = false, _loading = false, _queue = [];
       function _onReady() {
         _loaded = true;
@@ -153,7 +255,7 @@
         _queue = [];
       }
       window._loadBbs = function(cb) {
-        if (_loaded) { cb(); return; }
+        if (_loaded) { if (cb) cb(); return; }
         if (cb) _queue.push(cb);
         if (_loading) return;
         _loading = true;
@@ -161,7 +263,7 @@
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js',
-          './bbs.js?v=3'
+          './bbs.js?v=4'
         ];
         (function seq(i) {
           if (i >= srcs.length) { _onReady(); return; }
@@ -171,9 +273,25 @@
           document.body.appendChild(s);
         })(0);
       };
+
+      /* 掲示板ボタン（初回クリックでロード） */
       document.getElementById('bbsFloatBtn').addEventListener('click', function() {
         _loadBbs(function() { openBbsPanel(); });
       }, { once: true });
+
+      /* SOSボタン */
+      document.getElementById('sosBtn').addEventListener('click', function() {
+        var reg = _getReg();
+        if (!reg.kumi || !reg.name) {
+          window._openRegModal(function() {
+            document.getElementById('sosBtn').click();
+          });
+          return;
+        }
+        _loadBbs(function() {
+          if (typeof window._bbsSendSOS === 'function') window._bbsSendSOS();
+        });
+      });
     })();
     </script>
   </body>

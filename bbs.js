@@ -1,13 +1,12 @@
 /* =============================================
    現場掲示板 — Firebase Firestore
-   投稿：名前入力のみ（認証不要）
-   削除：管理者（隠しログイン）のみ
-   ※ index.html の遅延ローダーから _bbsStart() を呼び出す
+   投稿タイプ: 安否確認 / 災害発見 / SOS
+   削除: 管理者（隠しログイン）のみ
    ============================================= */
 
 window._bbsStart = function() {
 
-const firebaseConfig = {
+var firebaseConfig = {
   apiKey: 'AIzaSyCVJNDMILPbA4n0hSimX5d-WzcJO_n0oRQ',
   authDomain: 'agatto-map.firebaseapp.com',
   projectId: 'agatto-map',
@@ -20,23 +19,39 @@ firebase.initializeApp(firebaseConfig);
 var _fbDb   = firebase.firestore();
 var _fbAuth = firebase.auth();
 
-var _bbsPosts        = [];
-var _bbsMarkers      = [];
-var _bbsPhotoMap     = {};
-var _bbsTimer        = null;
-var _bbsPhotoB64     = null;
-var _bbsLat          = null;
-var _bbsLng          = null;
-var _bbsPhotoLat     = null;
-var _bbsPhotoLng     = null;
-var _bbsCurrentUser  = null;
+var _bbsPosts       = [];
+var _bbsMarkers     = [];
+var _bbsPhotoMap    = {};
+var _bbsTimer       = null;
+var _bbsPhotoB64    = null;
+var _bbsLat         = null;
+var _bbsLng         = null;
+var _bbsPhotoLat    = null;
+var _bbsPhotoLng    = null;
+var _bbsCurrentUser = null;
+var _bbsPostType    = 'safety';
 
-/* ── 管理者認証（隠し） ── */
+/* ── 登録情報 ── */
+function _getReg() {
+  return {
+    kumi: localStorage.getItem('uedoBbsKumi') || '',
+    name: localStorage.getItem('uedoBbsName') || ''
+  };
+}
+function _bbsUpdateAuthorBar() {
+  var reg = _getReg();
+  document.getElementById('bbsAuthorBarInfo').textContent =
+    (reg.kumi && reg.name) ? reg.kumi + '　' + reg.name : '未登録';
+}
+document.getElementById('bbsAuthorEditBtn').addEventListener('click', function() {
+  window._openRegModal(function() { _bbsUpdateAuthorBar(); });
+});
+
+/* ── 管理者認証（隠し：パネルタイトルを5回タップ） ── */
 _fbAuth.onAuthStateChanged(function(user) {
   _bbsCurrentUser = user;
   _bbsRenderList();
 });
-
 (function() {
   var taps = 0, timer = null;
   document.getElementById('bbsPanelTitle').addEventListener('click', function() {
@@ -57,36 +72,17 @@ _fbAuth.onAuthStateChanged(function(user) {
   });
 })();
 
-/* ── 投稿者名管理 ── */
-function _bbsGetUserName() { return localStorage.getItem('bbsUserName') || ''; }
-function _bbsUpdateAuthorBar() {
-  document.getElementById('bbsAuthorBarName').textContent = _bbsGetUserName() || '未登録';
-}
-
-(function() {
-  var editBtn = document.getElementById('bbsAuthorEditBtn');
-  var editor  = document.getElementById('bbsAuthorEditor');
-  var input   = document.getElementById('bbsAuthorInput');
-  var saveBtn = document.getElementById('bbsAuthorSaveBtn');
-
-  editBtn.addEventListener('click', function() {
-    input.value = _bbsGetUserName();
-    editor.style.display = 'flex';
-    editBtn.style.display = 'none';
-    input.focus();
+/* ── 投稿タイプ切り替え ── */
+document.querySelectorAll('.bbs-type-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.bbs-type-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _bbsPostType = btn.dataset.type;
+    document.getElementById('bbsSafetyPane').style.display  = _bbsPostType === 'safety'   ? '' : 'none';
+    document.getElementById('bbsDisasterPane').style.display = _bbsPostType === 'disaster' ? '' : 'none';
+    if (_bbsPostType === 'disaster') _bbsAutoGetLoc();
   });
-  function saveAuthor() {
-    var name = input.value.trim();
-    if (!name) { toast('名前を入力してください', 1500); return; }
-    localStorage.setItem('bbsUserName', name);
-    _bbsUpdateAuthorBar();
-    editor.style.display = 'none';
-    editBtn.style.display = '';
-    toast('投稿者名を登録しました', 1500);
-  }
-  saveBtn.addEventListener('click', saveAuthor);
-  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') saveAuthor(); });
-})();
+});
 
 /* ── データ取得 ── */
 async function _bbsFetchPosts() {
@@ -121,9 +117,6 @@ async function _bbsDeleteById(id) {
 }
 
 /* ── ヘルパー ── */
-function _bbsCatEmoji(cat) {
-  return { '道路': '🛣', '河川': '💧', '土砂': '⛰', '施設': '🏢', 'その他': '📌' }[cat] || '📌';
-}
 function _bbsFmtTime(iso) {
   var d = new Date(iso);
   return (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
@@ -134,6 +127,15 @@ function _bbsEsc(s) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
 }
+function _bbsTypeLabel(p) {
+  if (p.type === 'sos')      return { icon: '🆘', color: '#c62828', label: 'SOS' };
+  if (p.type === 'safety') {
+    if (p.status === '異常あり')
+      return { icon: '⚠️', color: '#e65100', label: '安否確認' };
+    return { icon: '✅', color: '#2e7d32', label: '安否確認' };
+  }
+  return { icon: '📌', color: '#37474f', label: '災害発見' };
+}
 
 /* ── マーカー描画 ── */
 function _bbsRenderMarkers() {
@@ -141,13 +143,16 @@ function _bbsRenderMarkers() {
   _bbsMarkers = []; _bbsPhotoMap = {};
   _bbsPosts.forEach(function(p) {
     if (p.lat == null || p.lng == null) return;
+    var tl = _bbsTypeLabel(p);
     var ico = L.divIcon({
-      html: '<div style="background:#37474f;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);margin:-16px 0 0 -16px">📌</div>',
-      iconSize: [32, 32], className: ''
+      html: '<div style="background:' + tl.color + ';color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);margin:-17px 0 0 -17px">' + tl.icon + '</div>',
+      iconSize: [34, 34], className: ''
     });
-    var pop = '<div style="font-size:12px;max-width:230px"><span style="color:#aaa">' + _bbsFmtTime(p.ts) + '</span>';
-    if (p.author) pop += ' <span style="color:#888">👤' + _bbsEsc(p.author) + '</span>';
-    pop += '<br><div style="margin-top:4px">' + _bbsEsc(p.comment || '') + '</div>';
+    var pop = '<div style="font-size:12px;max-width:230px">';
+    pop += '<b>' + _bbsEsc(tl.label) + '</b> <span style="color:#aaa">' + _bbsFmtTime(p.ts) + '</span>';
+    if (p.kumi || p.author) pop += '<br><span style="color:#666">👤 ' + _bbsEsc((p.kumi || '') + '　' + (p.author || '')) + '</span>';
+    if (p.status) pop += '<br><span style="font-weight:bold">' + _bbsEsc(p.status) + '</span>';
+    if (p.comment) pop += '<br>' + _bbsEsc(p.comment);
     if (p.photo) {
       _bbsPhotoMap[p.id] = p.photo;
       pop += '<img src="' + p.photo + '" style="max-width:210px;max-height:130px;border-radius:6px;margin-top:6px;cursor:pointer;display:block" onclick="_bbsOpenPhoto(\'' + p.id + '\')">';
@@ -171,14 +176,25 @@ function _bbsRenderList() {
   var sorted = _bbsPosts.slice().sort(function(a, b) { return new Date(b.ts) - new Date(a.ts); });
   listEl.innerHTML = '';
   sorted.forEach(function(p) {
+    var tl   = _bbsTypeLabel(p);
     var card = document.createElement('div');
     card.className = 'bbs-card';
+    card.style.borderLeft = '4px solid ' + tl.color;
+
     var hdr = document.createElement('div');
     hdr.className = 'bbs-card-header';
+
+    var badge = document.createElement('span');
+    badge.className = 'bbs-cat-badge';
+    badge.style.background = tl.color;
+    badge.textContent = tl.icon + ' ' + tl.label;
+
     var ts = document.createElement('span');
     ts.className = 'bbs-time';
     ts.textContent = _bbsFmtTime(p.ts);
-    hdr.appendChild(ts);
+
+    hdr.appendChild(badge); hdr.appendChild(ts);
+
     if (p.lat != null) {
       var jb = document.createElement('button');
       jb.className = 'bbs-icon-btn'; jb.textContent = '🗺 地図';
@@ -192,14 +208,24 @@ function _bbsRenderList() {
       hdr.appendChild(db);
     }
     card.appendChild(hdr);
-    if (p.author) {
+
+    if (p.kumi || p.author) {
       var au = document.createElement('div');
-      au.className = 'bbs-author'; au.textContent = '👤 ' + p.author;
+      au.className = 'bbs-author';
+      au.textContent = '👤 ' + (p.kumi || '') + '　' + (p.author || '');
       card.appendChild(au);
     }
-    var cm = document.createElement('div');
-    cm.className = 'bbs-comment'; cm.textContent = p.comment || '';
-    card.appendChild(cm);
+    if (p.status) {
+      var st = document.createElement('div');
+      st.style.cssText = 'font-size:13px;font-weight:bold;margin:4px 0;color:' + tl.color;
+      st.textContent = p.status;
+      card.appendChild(st);
+    }
+    if (p.comment) {
+      var cm = document.createElement('div');
+      cm.className = 'bbs-comment'; cm.textContent = p.comment;
+      card.appendChild(cm);
+    }
     if (p.photo) {
       var img = document.createElement('img');
       img.src = p.photo; img.className = 'bbs-photo';
@@ -261,51 +287,6 @@ window.closeBbsPanel = function() {
 };
 
 /* ── タブ切り替え ── */
-function _bbsUpdateLocStatus() {
-  var el = document.getElementById('bbsLocStatus');
-  if (_bbsLat != null) {
-    el.textContent = '📍 ' + _bbsLat.toFixed(5) + ', ' + _bbsLng.toFixed(5);
-    el.style.color = '#2e7d32';
-  } else {
-    el.textContent = '位置情報なし';
-    el.style.color = '#999';
-  }
-  document.getElementById('bbsUsePhotoLocBtn').style.display = _bbsPhotoLat != null ? '' : 'none';
-}
-
-function _bbsAutoGetLoc() {
-  if (_bbsLat != null) return;
-  if (window._lastKnownPos) {
-    _bbsLat = window._lastKnownPos.coords.latitude;
-    _bbsLng = window._lastKnownPos.coords.longitude;
-    _bbsUpdateLocStatus();
-    return;
-  }
-  document.getElementById('bbsLocStatus').textContent = '📡 取得中...';
-  document.getElementById('bbsLocStatus').style.color = '#888';
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      _bbsLat = pos.coords.latitude; _bbsLng = pos.coords.longitude;
-      _bbsUpdateLocStatus();
-    },
-    function() {
-      document.getElementById('bbsLocStatus').textContent = '位置情報なし（取得失敗）';
-      document.getElementById('bbsLocStatus').style.color = '#999';
-    },
-    { enableHighAccuracy: true, timeout: 15000 }
-  );
-}
-
-document.getElementById('bbsClearLocBtn').addEventListener('click', function() {
-  _bbsLat = null; _bbsLng = null; _bbsUpdateLocStatus();
-});
-document.getElementById('bbsUsePhotoLocBtn').addEventListener('click', function() {
-  if (_bbsPhotoLat == null) return;
-  _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng;
-  _bbsUpdateLocStatus();
-  toast('写真の位置情報を使います', 1500);
-});
-
 document.querySelectorAll('.bbs-tab').forEach(function(btn) {
   btn.addEventListener('click', function() {
     document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
@@ -313,7 +294,7 @@ document.querySelectorAll('.bbs-tab').forEach(function(btn) {
     var tab = btn.dataset.tab;
     document.getElementById('bbsListPane').style.display = tab === 'list' ? '' : 'none';
     document.getElementById('bbsNewPane').style.display  = tab === 'new'  ? '' : 'none';
-    if (tab === 'new') _bbsAutoGetLoc();
+    if (tab === 'new' && _bbsPostType === 'disaster') _bbsAutoGetLoc();
   });
 });
 
@@ -331,6 +312,16 @@ document.getElementById('bbsRefreshBtn').addEventListener('click', async functio
   _bbsRenderList();
   toast('更新しました', 1500);
 });
+
+/* ── 初回フェッチ・定期更新 ── */
+(async function() {
+  if (await _bbsFetchPosts()) _bbsRenderMarkers();
+  setInterval(async function() {
+    if (bbsPanel.style.display !== 'flex') {
+      if (await _bbsFetchPosts()) _bbsRenderMarkers();
+    }
+  }, 60000);
+})();
 
 /* ── ドラッグ ── */
 (function() {
@@ -351,6 +342,42 @@ document.getElementById('bbsRefreshBtn').addEventListener('click', async functio
   document.addEventListener('mousemove', function(e) { if (drag) moveDrag(e.clientX, e.clientY); });
   document.addEventListener('mouseup', function() { endDrag(); handle.style.cursor = 'grab'; });
 })();
+
+/* ── 位置情報 ── */
+function _bbsUpdateLocStatus() {
+  var el = document.getElementById('bbsLocStatus');
+  if (_bbsLat != null) {
+    el.textContent = '📍 ' + _bbsLat.toFixed(5) + ', ' + _bbsLng.toFixed(5);
+    el.style.color = '#2e7d32';
+  } else {
+    el.textContent = '位置情報なし';
+    el.style.color = '#999';
+  }
+  document.getElementById('bbsUsePhotoLocBtn').style.display = _bbsPhotoLat != null ? '' : 'none';
+}
+function _bbsAutoGetLoc() {
+  if (_bbsLat != null) return;
+  if (window._lastKnownPos) {
+    _bbsLat = window._lastKnownPos.coords.latitude;
+    _bbsLng = window._lastKnownPos.coords.longitude;
+    _bbsUpdateLocStatus(); return;
+  }
+  document.getElementById('bbsLocStatus').textContent = '📡 取得中...';
+  document.getElementById('bbsLocStatus').style.color = '#888';
+  navigator.geolocation.getCurrentPosition(
+    function(pos) { _bbsLat = pos.coords.latitude; _bbsLng = pos.coords.longitude; _bbsUpdateLocStatus(); },
+    function() { document.getElementById('bbsLocStatus').textContent = '取得失敗'; document.getElementById('bbsLocStatus').style.color = '#999'; },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+document.getElementById('bbsClearLocBtn').addEventListener('click', function() {
+  _bbsLat = null; _bbsLng = null; _bbsUpdateLocStatus();
+});
+document.getElementById('bbsUsePhotoLocBtn').addEventListener('click', function() {
+  if (_bbsPhotoLat == null) return;
+  _bbsLat = _bbsPhotoLat; _bbsLng = _bbsPhotoLng;
+  _bbsUpdateLocStatus(); toast('写真の位置情報を使います', 1500);
+});
 
 /* ── 写真圧縮 ── */
 function _bbsCompressPhoto(file) {
@@ -373,22 +400,16 @@ function _bbsCompressPhoto(file) {
     img.src = url;
   });
 }
-
 async function _bbsHandlePhoto(file, fromCamera) {
   if (!file) return;
   _bbsPhotoLat = null; _bbsPhotoLng = null;
   if (fromCamera) {
-    if (window._lastKnownPos) {
-      _bbsPhotoLat = _lastKnownPos.coords.latitude;
-      _bbsPhotoLng = _lastKnownPos.coords.longitude;
-    }
+    if (window._lastKnownPos) { _bbsPhotoLat = _lastKnownPos.coords.latitude; _bbsPhotoLng = _lastKnownPos.coords.longitude; }
   } else {
     if (window.exifr) {
       try {
         var gps = await exifr.gps(file);
-        if (gps && gps.latitude && gps.longitude) {
-          _bbsPhotoLat = gps.latitude; _bbsPhotoLng = gps.longitude;
-        }
+        if (gps && gps.latitude && gps.longitude) { _bbsPhotoLat = gps.latitude; _bbsPhotoLng = gps.longitude; }
       } catch(_) {}
     }
   }
@@ -396,53 +417,56 @@ async function _bbsHandlePhoto(file, fromCamera) {
   document.getElementById('bbsTakePhotoBtn').textContent = '圧縮中...';
   document.getElementById('bbsPickPhotoBtn').textContent = '圧縮中...';
   _bbsPhotoB64 = await _bbsCompressPhoto(file);
-  if (_bbsPhotoB64) {
-    var prev = document.getElementById('bbsPhotoPreview');
-    prev.src = _bbsPhotoB64; prev.style.display = 'block';
-  }
+  if (_bbsPhotoB64) { var prev = document.getElementById('bbsPhotoPreview'); prev.src = _bbsPhotoB64; prev.style.display = 'block'; }
   document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
   document.getElementById('bbsPickPhotoBtn').textContent = '🖼 ギャラリー';
   _bbsUpdateLocStatus();
 }
-
 function _bbsOpenFileInput(useCamera) {
   var inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*';
   if (useCamera) inp.setAttribute('capture', 'environment');
   inp.style.cssText = 'position:fixed;top:0;left:0;opacity:0;width:0;height:0;pointer-events:none;';
   document.body.appendChild(inp);
-  inp.onchange = function(e) {
-    var f = e.target.files[0];
-    if (f) _bbsHandlePhoto(f, useCamera);
-    document.body.removeChild(inp);
-  };
+  inp.onchange = function(e) { var f = e.target.files[0]; if (f) _bbsHandlePhoto(f, useCamera); document.body.removeChild(inp); };
   inp.click();
 }
-
 document.getElementById('bbsTakePhotoBtn').addEventListener('click', function() { _bbsOpenFileInput(true); });
 document.getElementById('bbsPickPhotoBtn').addEventListener('click', function() { _bbsOpenFileInput(false); });
 document.getElementById('bbsPhotoInput').addEventListener('change', function(e) { _bbsHandlePhoto(e.target.files[0]); e.target.value = ''; });
 document.getElementById('bbsPhotoPreview').addEventListener('click', function() { if (_bbsPhotoB64) openPhoto(_bbsPhotoB64); });
 
-/* ── 投稿（認証不要） ── */
+/* ── 投稿 ── */
 document.getElementById('bbsSubmitBtn').addEventListener('click', async function() {
-  var comment = document.getElementById('bbsComment').value.trim();
-  if (!comment) { toast('コメントを入力してください', 2000); return; }
-  var author = _bbsGetUserName();
-  if (!author) { toast('先に投稿者名を登録してください', 2000); return; }
-  var btn    = document.getElementById('bbsSubmitBtn');
+  var reg = _getReg();
+  if (!reg.kumi || !reg.name) { toast('先に組名・氏名を登録してください', 2500); return; }
+  var btn = document.getElementById('bbsSubmitBtn');
   var status = document.getElementById('bbsFormStatus');
+  var postData = {
+    ts:      firebase.firestore.FieldValue.serverTimestamp(),
+    type:    _bbsPostType,
+    kumi:    reg.kumi,
+    author:  reg.name,
+    lat:     null,
+    lng:     null,
+    photo:   null
+  };
+  if (_bbsPostType === 'safety') {
+    postData.status  = document.getElementById('bbsStatusSel').value;
+    postData.comment = document.getElementById('bbsSafetyComment').value.trim();
+  } else {
+    var comment = document.getElementById('bbsDisasterComment').value.trim();
+    if (!comment) { toast('コメントを入力してください', 2000); return; }
+    postData.comment = comment;
+    postData.lat     = _bbsLat;
+    postData.lng     = _bbsLng;
+    postData.photo   = _bbsPhotoB64 || null;
+  }
   btn.disabled = true; status.textContent = '投稿中...';
   try {
-    await _fbDb.collection('bbs_posts').add({
-      ts:      firebase.firestore.FieldValue.serverTimestamp(),
-      comment: comment,
-      author:  author,
-      lat:     _bbsLat,
-      lng:     _bbsLng,
-      photo:   _bbsPhotoB64 || null
-    });
-    document.getElementById('bbsComment').value = '';
+    await _fbDb.collection('bbs_posts').add(postData);
+    document.getElementById('bbsSafetyComment').value  = '';
+    document.getElementById('bbsDisasterComment').value = '';
     _bbsPhotoB64 = null; _bbsLat = null; _bbsLng = null; _bbsPhotoLat = null; _bbsPhotoLng = null;
     document.getElementById('bbsPhotoPreview').style.display = 'none';
     document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
@@ -462,5 +486,28 @@ document.getElementById('bbsSubmitBtn').addEventListener('click', async function
   }
   btn.disabled = false;
 });
+
+/* ── SOS送信 ── */
+window._bbsSendSOS = async function() {
+  var reg = _getReg();
+  if (!reg.kumi || !reg.name) { toast('組名・氏名の登録が必要です', 2500); return; }
+  if (!await showConfirm('SOSを送信しますか？\n緊急時のみ使用してください。')) return;
+  var lat = window._lastKnownPos ? window._lastKnownPos.coords.latitude  : null;
+  var lng = window._lastKnownPos ? window._lastKnownPos.coords.longitude : null;
+  try {
+    await _fbDb.collection('bbs_posts').add({
+      ts:     firebase.firestore.FieldValue.serverTimestamp(),
+      type:   'sos',
+      kumi:   reg.kumi,
+      author: reg.name,
+      comment: 'SOS',
+      lat:    lat,
+      lng:    lng,
+      photo:  null
+    });
+    toast('🆘 SOSを送信しました', 4000);
+    if (await _bbsFetchPosts()) _bbsRenderMarkers();
+  } catch(e) { toast('SOS送信失敗: ' + e.message, 4000); }
+};
 
 }; /* _bbsStart end */
