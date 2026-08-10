@@ -77,8 +77,7 @@ function _openXlsxModal() {
     return;
   }
   _xlsxLayerSel.innerHTML = layers.map(function(l) {
-    var badge = l.type === 'pmtiles' ? ' [PMTiles]' : ' [GeoJSON]';
-    return '<option value="' + l.name + '">' + l.name + badge + '</option>';
+    return '<option value="' + l.name + '">' + l.name + '</option>';
   }).join('');
   _updateGeoFields();
   _xlsxModal.classList.add('show');
