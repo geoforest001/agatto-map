@@ -378,6 +378,17 @@ body {
   padding: 6px 2px 2px;
   display: block;
 }
+.lc-sub-label {
+  padding-left: 10px;
+  font-size: 9px;
+  color: #c0392b;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.lc-sub-item {
+  padding-left: 20px !important;
+  display: block;
+}
 
 /* ─── ツールボックス ─────────────────────────── */
 #tbLayers { padding: 2px 0 4px; }

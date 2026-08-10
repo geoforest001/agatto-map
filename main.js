@@ -348,14 +348,15 @@ map.getPane('gpxPane').style.zIndex = 460;
 const baseLayers = {};
 
 const overlays = { '住宅地図': jutakuTiles };
-const displayOverlays = { 'AED': aedLayer, 'ポンプ車庫': pumpLayer, '消火栓': hydrantLayer, '消火栓から60m': hydrant60mLayer, '防火水槽': waterTankLayer, '防犯灯': boCrimeLightLayer, '組境界': kumiBoundaryLayer };
+const displayOverlays = { 'AED': aedLayer, '防犯灯': boCrimeLightLayer, '組境界': kumiBoundaryLayer };
+const fireOverlays    = { 'ポンプ車庫': pumpLayer, '防火水槽': waterTankLayer, '消火栓': hydrantLayer, '消火栓から60m': hydrant60mLayer };
 
 let layerControl;
 
 function renderLayerControl() {
   if (layerControl) map.removeControl(layerControl);
 
-  layerControl = L.control.layers(baseLayers, Object.assign({}, overlays, displayOverlays), {
+  layerControl = L.control.layers(baseLayers, Object.assign({}, overlays, displayOverlays, fireOverlays), {
     position: "topright",
     collapsed: false
   });
@@ -455,14 +456,23 @@ function renderLayerControl() {
   // ── オーバーレイ セクションラベル（グループ順に注入）──
   var insertIdx = 0;
   [
-    { label: '連携可能レイヤ', layers: overlays },
-    { label: '表示レイヤ',     layers: displayOverlays }
+    { label: '連携可能レイヤ', layers: overlays,       sub: false },
+    { label: '表示レイヤ',     layers: displayOverlays, sub: false },
+    { label: '🔥 消火施設',    layers: fireOverlays,    sub: true  }
   ].forEach(function(group) {
     var lbl = document.createElement('div');
-    lbl.className = 'lc-section-label';
+    lbl.className = group.sub ? 'lc-section-label lc-sub-label' : 'lc-section-label';
     lbl.textContent = group.label;
     overlaysDiv.insertBefore(lbl, overlaysDiv.children[insertIdx] || null);
-    insertIdx += 1 + Object.keys(group.layers).length;
+    insertIdx += 1;
+    var count = Object.keys(group.layers).length;
+    if (group.sub) {
+      for (var i = 0; i < count; i++) {
+        var el = overlaysDiv.children[insertIdx + i];
+        if (el) el.classList.add('lc-sub-item');
+      }
+    }
+    insertIdx += count;
   });
 
   /* Excel連携ボタンは気象レイヤ（DOMContentLoaded で追加）の直後に挿入 */
