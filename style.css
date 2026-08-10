@@ -607,6 +607,27 @@ table.xl-popup .xl-row th { color:#0066ff; }
 .bbs-tbig-text { display: flex; flex-direction: column; line-height: 1.4; }
 .bbs-tbig-text small { font-size: 11px; font-weight: normal; opacity: 0.9; }
 
+/* ─── 新規投稿ボタン ─── */
+#bbsNewBtn {
+  display: block; width: 100%; padding: 10px;
+  margin-bottom: 10px;
+  background: #ef6c00; color: #fff;
+  border: none; border-radius: 9px;
+  font-size: 13px; font-weight: bold; font-family: sans-serif;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#bbsNewBtn:active { background: #e65100; }
+
+/* ─── 一覧に戻るボタン ─── */
+.bbs-back-to-list-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; margin-bottom: 12px;
+  border: 1px solid #ddd; border-radius: 7px;
+  background: #f5f5f5; font-size: 12px; font-family: sans-serif;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; color: #555;
+}
+.bbs-back-to-list-btn:active { background: #e8e8e8; }
+
 /* ─── 戻るボタン ─── */
 .bbs-back-btn {
   display: inline-flex; align-items: center; gap: 4px;

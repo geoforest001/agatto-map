@@ -86,11 +86,8 @@
           <span id="bbsAuthorBarInfo">未登録</span>
           <button id="bbsAuthorEditBtn">変更</button>
         </div>
-        <div class="bbs-tabs">
-          <button class="bbs-tab active" id="bbsTabList" data-tab="list">投稿一覧</button>
-          <button class="bbs-tab" id="bbsTabNew" data-tab="new">＋ 新規投稿</button>
-        </div>
         <div id="bbsListPane" class="bbs-pane">
+          <button id="bbsNewBtn">＋ 新規投稿</button>
           <div id="bbsLoadingMsg">読み込み中...</div>
           <div id="bbsEmptyMsg" style="display:none">投稿がありません</div>
           <div id="bbsList"></div>
@@ -98,6 +95,7 @@
         <div id="bbsNewPane" class="bbs-pane" style="display:none">
           <!-- ① タイプ選択 -->
           <div id="bbsTypePane">
+            <button class="bbs-back-to-list-btn">← 一覧に戻る</button>
             <button class="bbs-type-big-btn" data-type="safety">
               <span class="bbs-tbig-icon">🔰</span>
               <span class="bbs-tbig-text">安否確認<small>（組長用）</small></span>
@@ -269,7 +267,7 @@
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js',
-          './bbs.js?v=7'
+          './bbs.js?v=8'
         ];
         (function seq(i) {
           if (i >= srcs.length) { _onReady(); return; }

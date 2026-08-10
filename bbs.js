@@ -287,8 +287,6 @@ window.openBbsPanel = async function() {
   bbsPanel.classList.remove('collapsed');
   bbsFloatBtn.classList.add('active');
   _bbsMarkSeen();
-  document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
-  document.getElementById('bbsTabList').classList.add('active');
   document.getElementById('bbsListPane').style.display = '';
   document.getElementById('bbsNewPane').style.display = 'none';
   document.getElementById('bbsLoadingMsg').style.display = 'block';
@@ -308,16 +306,18 @@ window.closeBbsPanel = function() {
   clearInterval(_bbsTimer); _bbsTimer = null;
 };
 
-/* ── タブ切り替え ── */
-document.querySelectorAll('.bbs-tab').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    var tab = btn.dataset.tab;
-    document.getElementById('bbsListPane').style.display = tab === 'list' ? '' : 'none';
-    document.getElementById('bbsNewPane').style.display  = tab === 'new'  ? '' : 'none';
-    if (tab === 'new') _bbsShowTypePane();
-  });
+/* ── 新規投稿ボタン / 一覧に戻る ── */
+function _bbsShowList() {
+  document.getElementById('bbsListPane').style.display = '';
+  document.getElementById('bbsNewPane').style.display  = 'none';
+}
+document.getElementById('bbsNewBtn').addEventListener('click', function() {
+  document.getElementById('bbsListPane').style.display = 'none';
+  document.getElementById('bbsNewPane').style.display  = '';
+  _bbsShowTypePane();
+});
+document.querySelectorAll('.bbs-back-to-list-btn').forEach(function(btn) {
+  btn.addEventListener('click', _bbsShowList);
 });
 
 bbsFloatBtn.addEventListener('click', function() {
@@ -494,10 +494,7 @@ document.getElementById('bbsSubmitBtn').addEventListener('click', async function
     document.getElementById('bbsTakePhotoBtn').textContent = '📷 撮影する';
     document.getElementById('bbsPickPhotoBtn').textContent = '🖼 ギャラリー';
     _bbsUpdateLocStatus();
-    document.querySelectorAll('.bbs-tab').forEach(function(b) { b.classList.remove('active'); });
-    document.getElementById('bbsTabList').classList.add('active');
-    document.getElementById('bbsListPane').style.display = '';
-    document.getElementById('bbsNewPane').style.display  = 'none';
+    _bbsShowList();
     if (await _bbsFetchPosts()) _bbsRenderMarkers();
     _bbsRenderList();
     toast('投稿しました！', 2500);
