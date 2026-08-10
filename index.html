@@ -154,6 +154,15 @@
     <!-- Excel連携 ファイル入力 -->
     <input id="xlsxInput" type="file" accept=".xlsx,.xls,.csv" style="display:none">
 
+    <!-- Excel連携 色分け凡例 -->
+    <div id="xlsxLegend" style="display:none">
+      <div class="xl-leg-title">区加入区分</div>
+      <div class="xl-leg-item"><span class="xl-leg-sw" style="background:rgba(76,175,80,0.75);border-color:#1b5e20"></span>加入</div>
+      <div class="xl-leg-item"><span class="xl-leg-sw" style="background:rgba(255,235,59,0.8);border-color:#c87000"></span>協力金</div>
+      <div class="xl-leg-item"><span class="xl-leg-sw" style="background:rgba(255,255,255,0.8);border-color:#d32f2f;border-width:2px"></span>休区</div>
+      <div class="xl-leg-item"><span class="xl-leg-sw" style="background:rgba(200,200,200,0.5);border-color:#888"></span>その他</div>
+    </div>
+
     <!-- Excel連携 統計カード -->
     <div id="xlsxStatCard">
       <span id="xlsxStatText"></span>
@@ -175,6 +184,12 @@
         <div class="xlsxRow">
           <label class="xlsxLabel">Excel側キー列</label>
           <select id="xlsxKeyXls"></select>
+        </div>
+        <div class="xlsxRow" id="xlsxColorRow" style="display:none">
+          <label class="xlsxLabel">色分け列（任意）</label>
+          <select id="xlsxColorCol">
+            <option value="">── 色分けなし ──</option>
+          </select>
         </div>
         <div id="xlsxModalInfo"></div>
         <div class="xlsxBtns">
@@ -206,7 +221,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="./main.js?v=9"></script>
     <script src="./weather.js?v=3"></script>
-    <script src="./excel.js?v=2"></script>
+    <script src="./excel.js?v=3"></script>
 
     <!-- 初期登録 + Firebase遅延ロード + SOS -->
     <script>

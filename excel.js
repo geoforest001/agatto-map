@@ -3,12 +3,21 @@
    GeoJSON レイヤー + PMTiles レイヤー対応
    ============================================= */
 
-let _xlsxRows       = [];
-let _xlsxJoinMap    = null;
-let _xlsxTargetName = '';
-let _xlsxKeyGeo     = '';
-let _xlsxKeyXls     = '';
-let _xlsxIsPmTiles  = false;
+let _xlsxRows          = [];
+let _xlsxJoinMap       = null;
+let _xlsxTargetName    = '';
+let _xlsxKeyGeo        = '';
+let _xlsxKeyXls        = '';
+let _xlsxIsPmTiles     = false;
+let _xlsxColorCol      = '';
+let _xlsxColorApplied  = false;
+
+/* 色分け定義 — 区加入区分の凡例と対応 */
+const _xlsxColorDefs = [
+  { val: '加入',   fill: 'rgba(76,175,80,0.72)',   stroke: 'rgba(27,94,32,0.85)',   width: 1.2 },
+  { val: '協力金', fill: 'rgba(255,235,59,0.80)',   stroke: 'rgba(200,120,0,0.85)',  width: 1.2 },
+  { val: '休区',   fill: 'rgba(255,255,255,0.78)',  stroke: 'rgba(211,47,47,0.95)', width: 2.5 },
+];
 
 const _xlsxInput     = document.getElementById('xlsxInput');
 const _xlsxModal     = document.getElementById('xlsxModal');
@@ -52,6 +61,7 @@ function _updateGeoFields() {
   _xlsxKeyGeoSel.innerHTML = fields.length
     ? fields.map(function(f) { return '<option value="' + f + '">' + f + '</option>'; }).join('')
     : '<option value="">（フィールドなし）</option>';
+  document.getElementById('xlsxColorRow').style.display = pm ? '' : 'none';
 }
 
 _xlsxLayerSel.addEventListener('change', _updateGeoFields);
@@ -135,9 +145,12 @@ _xlsxInput.addEventListener('change', function() {
       }
       if (!_xlsxRows.length) { toast('データが空です', 2000); return; }
       var headers = Object.keys(_xlsxRows[0]);
-      _xlsxKeyXlsSel.innerHTML = headers.map(function(h) {
+      var opts = headers.map(function(h) {
         return '<option value="' + h + '">' + h + '</option>';
       }).join('');
+      _xlsxKeyXlsSel.innerHTML = opts;
+      document.getElementById('xlsxColorCol').innerHTML =
+        '<option value="">── 色分けなし ──</option>' + opts;
       _xlsxModalInfo.textContent = _xlsxRows.length + '行 / ' + headers.length + '列 読み込み完了';
       _openXlsxModal();
     } catch(err) {
@@ -152,6 +165,7 @@ document.getElementById('xlsxModalOk').addEventListener('click', function() {
   _xlsxTargetName = _xlsxLayerSel.value;
   _xlsxKeyGeo     = _xlsxKeyGeoSel.value;
   _xlsxKeyXls     = _xlsxKeyXlsSel.value;
+  _xlsxColorCol   = document.getElementById('xlsxColorCol').value;
   _xlsxIsPmTiles  = !!(window.pmLayers && window.pmLayers[_xlsxTargetName]);
 
   _xlsxJoinMap = new Map();
@@ -164,6 +178,7 @@ document.getElementById('xlsxModalOk').addEventListener('click', function() {
   _showXlsxStat();
 
   if (_xlsxIsPmTiles) {
+    if (_xlsxColorCol) _applyPmTilesColorCoding();
     toast('Excel連携を設定しました（' + _xlsxJoinMap.size + '件マッチ）\nポリゴンをクリックしてデータを確認できます', 3000);
   } else {
     _rebindGeoJsonPopups();
@@ -186,6 +201,7 @@ function _showXlsxStat() {
 
 document.getElementById('xlsxStatClose').addEventListener('click', function() {
   _xlsxStatCard.style.display = 'none';
+  if (_xlsxColorApplied) _restorePmTilesStyle();
   _xlsxJoinMap = null;
   _xlsxRows    = [];
   if (!_xlsxIsPmTiles) _rebindGeoJsonPopups();
@@ -283,4 +299,60 @@ function _esc(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
+}
+
+/* ── PMTiles 色分け適用 ── */
+function _applyPmTilesColorCoding() {
+  var cfg = window.pmLayers && window.pmLayers[_xlsxTargetName];
+  if (!cfg) return;
+  var layer = cfg.layer;
+
+  if (!cfg._origPaintRules) cfg._origPaintRules = layer.paint_rules.slice();
+
+  var keyGeo  = _xlsxKeyGeo;
+  var colorCol = _xlsxColorCol;
+  var joinMap  = _xlsxJoinMap;
+
+  /* 既知カテゴリのルール */
+  var rules = _xlsxColorDefs.map(function(def) {
+    var val = def.val;
+    return {
+      dataLayer: cfg.dataLayer,
+      symbolizer: new protomapsL.PolygonSymbolizer({ fill: def.fill, stroke: def.stroke, width: def.width }),
+      filter: function(zoom, feature) {
+        var k = String(feature.props[keyGeo] || '').trim();
+        var row = joinMap.get(k);
+        return !!(row && String(row[colorCol] || '').trim() === val);
+      }
+    };
+  });
+
+  /* フォールバック: Excelに存在しない or 未定義カテゴリ */
+  var knownVals = _xlsxColorDefs.map(function(d) { return d.val; });
+  rules.unshift({
+    dataLayer: cfg.dataLayer,
+    symbolizer: new protomapsL.PolygonSymbolizer({ fill: 'rgba(200,200,200,0.45)', stroke: 'rgba(110,110,110,0.55)', width: 1.0 }),
+    filter: function(zoom, feature) {
+      var k = String(feature.props[keyGeo] || '').trim();
+      var row = joinMap.get(k);
+      if (!row) return true;
+      return knownVals.indexOf(String(row[colorCol] || '').trim()) === -1;
+    }
+  });
+
+  layer.paint_rules = rules;
+  layer.redraw();
+  document.getElementById('xlsxLegend').style.display = '';
+  _xlsxColorApplied = true;
+}
+
+/* ── PMTiles スタイル復元 ── */
+function _restorePmTilesStyle() {
+  var cfg = window.pmLayers && window.pmLayers[_xlsxTargetName];
+  if (!cfg || !cfg._origPaintRules) return;
+  cfg.layer.paint_rules = cfg._origPaintRules;
+  cfg.layer.redraw();
+  delete cfg._origPaintRules;
+  document.getElementById('xlsxLegend').style.display = 'none';
+  _xlsxColorApplied = false;
 }

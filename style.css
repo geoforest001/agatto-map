@@ -540,6 +540,48 @@ table.xl-popup .xl-sep {
 }
 table.xl-popup .xl-row th { color:#0066ff; }
 
+/* ─── Excel連携 色分け凡例 ─── */
+#xlsxLegend {
+  position: fixed;
+  bottom: 80px;
+  left: 12px;
+  z-index: 8000;
+  background: rgba(255,255,255,0.92);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+  font-size: 12px;
+  min-width: 90px;
+  backdrop-filter: blur(4px);
+}
+.xl-leg-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #555;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+}
+.xl-leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  color: #222;
+}
+.xl-leg-sw {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid #aaa;
+  flex-shrink: 0;
+}
+@media (prefers-color-scheme: dark) {
+  #xlsxLegend { background: rgba(40,40,40,0.92); }
+  .xl-leg-title { color: #bbb; }
+  .xl-leg-item { color: #eee; }
+}
+
 /* ─── 初期登録モーダル ─── */
 #regModal {
   position: fixed; inset: 0; z-index: 20000;
