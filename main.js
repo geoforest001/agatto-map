@@ -822,6 +822,17 @@ function _makeDroppedLayer(geojson) {
   });
 }
 
+function _updateDropStatCard() {
+  var card = document.getElementById('dropStatCard');
+  var count = droppedLayerGroup.getLayers().length;
+  if (count === 0) {
+    card.style.display = 'none';
+  } else {
+    card.style.display = 'flex';
+    document.getElementById('dropStatText').textContent = '📂 ' + count + 'レイヤ読込中';
+  }
+}
+
 function _addDroppedGeoJSON(gj, label) {
   try {
     var layer = _makeDroppedLayer(gj);
@@ -829,10 +840,18 @@ function _addDroppedGeoJSON(gj, label) {
     var bounds = layer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds.pad(0.1));
     toast(label + ' 読み込み完了');
+    _updateDropStatCard();
   } catch(e) {
     toast(label + ' 表示失敗: ' + e.message, 4000);
   }
 }
+
+document.getElementById('dropStatClose').addEventListener('click', function() {
+  droppedLayerGroup.clearLayers();
+  map.closePopup();
+  _updateDropStatCard();
+  toast('読込レイヤを解除しました');
+});
 
 async function _handleDroppedFile(file) {
   var ext = file.name.toLowerCase().split('.').pop();
