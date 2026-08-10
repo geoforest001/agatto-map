@@ -173,20 +173,26 @@ function _bbsRenderList() {
   loadMsg.style.display = 'none';
   if (!_bbsPosts.length) { emptyMsg.style.display = 'block'; listEl.innerHTML = ''; return; }
   emptyMsg.style.display = 'none';
-  var sorted = _bbsPosts.slice().sort(function(a, b) { return new Date(b.ts) - new Date(a.ts); });
+  var sorted = _bbsPosts.slice().sort(function(a, b) {
+    if (a.type === 'sos' && b.type !== 'sos') return -1;
+    if (a.type !== 'sos' && b.type === 'sos') return 1;
+    return new Date(b.ts) - new Date(a.ts);
+  });
   listEl.innerHTML = '';
   sorted.forEach(function(p) {
     var tl   = _bbsTypeLabel(p);
+    var isSos = p.type === 'sos';
     var card = document.createElement('div');
     card.className = 'bbs-card';
     card.style.borderLeft = '4px solid ' + tl.color;
+    if (isSos) card.style.cssText += ';padding:11px 12px;';
 
     var hdr = document.createElement('div');
     hdr.className = 'bbs-card-header';
 
     var badge = document.createElement('span');
-    badge.className = 'bbs-cat-badge';
-    badge.style.background = tl.color;
+    badge.className = isSos ? 'bbs-cat-badge sos' : 'bbs-cat-badge';
+    if (!isSos) badge.style.background = tl.color;
     badge.textContent = tl.icon + ' ' + tl.label;
 
     var ts = document.createElement('span');

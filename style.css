@@ -289,6 +289,10 @@ body {
   font-size: 10px; font-weight: bold; padding: 2px 7px; border-radius: 8px;
   background: #eef4ff; color: #0044cc; white-space: nowrap;
 }
+.bbs-cat-badge.sos {
+  font-size: 13px; padding: 4px 10px; border-radius: 10px;
+  background: #c62828; color: #fff; letter-spacing: 0.04em;
+}
 .bbs-time { font-size: 10px; color: #aaa; flex: 1; }
 .bbs-icon-btn {
   font-size: 11px; padding: 2px 6px; border: 1px solid #ddd;
