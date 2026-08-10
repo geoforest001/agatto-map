@@ -591,17 +591,28 @@ table.xl-popup .xl-row th { color:#0066ff; }
     inset 0 1px 2px rgba(255,255,255,0.12);
 }
 
-/* ─── 投稿タイプボタン ─── */
-.bbs-type-btn {
-  flex: 1; padding: 8px 6px; border: 2px solid #ddd; border-radius: 8px;
-  background: #f8f8f8; font-size: 12px; font-family: sans-serif;
+/* ─── 投稿タイプ 大ボタン ─── */
+.bbs-type-big-btn {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 14px 16px; margin-bottom: 10px;
+  border: none; border-radius: 12px;
+  font-family: sans-serif; font-size: 14px; font-weight: bold;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-  font-weight: bold; color: #666;
+  text-align: left; color: #fff;
 }
-.bbs-type-btn.active[data-type="safety"] {
-  border-color: #2e7d32; background: #e8f5e9; color: #2e7d32;
+.bbs-type-big-btn[data-type="safety"]   { background: #43a047; }
+.bbs-type-big-btn[data-type="disaster"] { background: #ef6c00; }
+.bbs-type-big-btn:active { filter: brightness(0.9); }
+.bbs-tbig-icon { font-size: 22px; flex-shrink: 0; }
+.bbs-tbig-text { display: flex; flex-direction: column; line-height: 1.4; }
+.bbs-tbig-text small { font-size: 11px; font-weight: normal; opacity: 0.9; }
+
+/* ─── 戻るボタン ─── */
+.bbs-back-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; margin-bottom: 10px;
+  border: 1px solid #ddd; border-radius: 7px;
+  background: #f5f5f5; font-size: 12px; font-family: sans-serif;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; color: #555;
 }
-.bbs-type-btn.active[data-type="disaster"] {
-  border-color: #e65100; background: #fff3e0; color: #e65100;
-}
+.bbs-back-btn:active { background: #e8e8e8; }

@@ -72,16 +72,26 @@ _fbAuth.onAuthStateChanged(function(user) {
   });
 })();
 
-/* ── 投稿タイプ切り替え ── */
-document.querySelectorAll('.bbs-type-btn').forEach(function(btn) {
+/* ── タイプ選択 ── */
+function _bbsShowTypePane() {
+  document.getElementById('bbsTypePane').style.display    = '';
+  document.getElementById('bbsSafetyPane').style.display  = 'none';
+  document.getElementById('bbsDisasterPane').style.display = 'none';
+  document.getElementById('bbsSubmitBtn').style.display   = 'none';
+  document.getElementById('bbsFormStatus').textContent    = '';
+}
+document.querySelectorAll('.bbs-type-big-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
-    document.querySelectorAll('.bbs-type-btn').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
     _bbsPostType = btn.dataset.type;
-    document.getElementById('bbsSafetyPane').style.display  = _bbsPostType === 'safety'   ? '' : 'none';
-    document.getElementById('bbsDisasterPane').style.display = _bbsPostType === 'disaster' ? '' : 'none';
+    document.getElementById('bbsTypePane').style.display    = 'none';
+    document.getElementById('bbsSafetyPane').style.display  = _bbsPostType === 'safety' ? '' : 'none';
+    document.getElementById('bbsDisasterPane').style.display = _bbsPostType !== 'safety' ? '' : 'none';
+    document.getElementById('bbsSubmitBtn').style.display   = '';
     if (_bbsPostType === 'disaster') _bbsAutoGetLoc();
   });
+});
+document.querySelectorAll('.bbs-back-btn').forEach(function(btn) {
+  btn.addEventListener('click', _bbsShowTypePane);
 });
 
 /* ── データ取得 ── */
@@ -134,7 +144,7 @@ function _bbsTypeLabel(p) {
       return { icon: '⚠️', color: '#e65100', label: '安否確認' };
     return { icon: '✅', color: '#2e7d32', label: '安否確認' };
   }
-  return { icon: '📌', color: '#37474f', label: '災害発見' };
+  return { icon: '📝', color: '#37474f', label: '自由コメント' };
 }
 
 /* ── マーカー描画 ── */
@@ -306,7 +316,7 @@ document.querySelectorAll('.bbs-tab').forEach(function(btn) {
     var tab = btn.dataset.tab;
     document.getElementById('bbsListPane').style.display = tab === 'list' ? '' : 'none';
     document.getElementById('bbsNewPane').style.display  = tab === 'new'  ? '' : 'none';
-    if (tab === 'new' && _bbsPostType === 'disaster') _bbsAutoGetLoc();
+    if (tab === 'new') _bbsShowTypePane();
   });
 });
 
