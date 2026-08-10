@@ -709,6 +709,13 @@ table.xl-popup .xl-row th { color:#0066ff; }
 }
 .bbs-back-btn:active { background: #e8e8e8; }
 
+/* ─── ズーム＋印刷ボタン 横並び ─── */
+.leaflet-top.leaflet-left {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
 /* ─── 印刷機能 ─────────────────────────── */
 #printFrame {
   display: none; position: fixed; inset: 0; z-index: 10500;
