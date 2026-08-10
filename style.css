@@ -397,6 +397,16 @@ body {
   padding-left: 20px !important;
   display: block;
 }
+.lc-sub-item--off {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.lc-group-cb {
+  margin-right: 4px;
+  vertical-align: middle;
+  cursor: pointer;
+  accent-color: #c0392b;
+}
 
 /* ─── ツールボックス ─────────────────────────── */
 #tbLayers { padding: 2px 0 4px; }

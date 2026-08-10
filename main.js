@@ -367,7 +367,41 @@ function renderLayerControl() {
   ].forEach(function(group) {
     var lbl = document.createElement('div');
     lbl.className = group.sub ? 'lc-section-label lc-sub-label' : 'lc-section-label';
-    lbl.textContent = group.label;
+
+    if (group.sub) {
+      var groupCb = document.createElement('input');
+      groupCb.type = 'checkbox';
+      groupCb.checked = true;
+      groupCb.className = 'lc-group-cb';
+      var groupTxt = document.createElement('span');
+      groupTxt.textContent = group.label;
+      lbl.appendChild(groupCb);
+      lbl.appendChild(groupTxt);
+
+      var _fireSavedState = null;
+      groupCb.addEventListener('change', function() {
+        var subItems = overlaysDiv.querySelectorAll('.lc-sub-item');
+        if (!groupCb.checked) {
+          _fireSavedState = [];
+          subItems.forEach(function(item) {
+            var cb = item.querySelector('input[type=checkbox]');
+            _fireSavedState.push(cb ? cb.checked : false);
+            item.classList.add('lc-sub-item--off');
+            if (cb && cb.checked) cb.click();
+          });
+        } else {
+          subItems.forEach(function(item, i) {
+            var cb = item.querySelector('input[type=checkbox]');
+            item.classList.remove('lc-sub-item--off');
+            if (cb && _fireSavedState && _fireSavedState[i] && !cb.checked) cb.click();
+          });
+          _fireSavedState = null;
+        }
+      });
+    } else {
+      lbl.textContent = group.label;
+    }
+
     overlaysDiv.insertBefore(lbl, overlaysDiv.children[insertIdx] || null);
     insertIdx += 1;
     var count = Object.keys(group.layers).length;
