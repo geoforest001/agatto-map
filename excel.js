@@ -33,11 +33,14 @@ window.xlsxOpenFile = function() {
   _xlsxInput.click();
 };
 
-/* ── レイヤー一覧（GeoJSON + PMTiles 両方） ── */
+/* ── レイヤー一覧（GeoJSON + PMTiles 両方、重複除去） ── */
 function _getAllLayerNames() {
-  const names = [];
-  Object.keys(overlays).forEach(function(n) { names.push({ name: n, type: 'geojson' }); });
-  Object.keys(window.pmLayers || {}).forEach(function(n) { names.push({ name: n, type: 'pmtiles' }); });
+  var pmNames = new Set(Object.keys(window.pmLayers || {}));
+  var names = [];
+  Object.keys(overlays).forEach(function(n) {
+    if (!pmNames.has(n)) names.push({ name: n, type: 'geojson' });
+  });
+  pmNames.forEach(function(n) { names.push({ name: n, type: 'pmtiles' }); });
   return names;
 }
 
@@ -307,11 +310,29 @@ function _applyPmTilesColorCoding() {
   if (!cfg) return;
   var layer = cfg.layer;
 
-  if (!cfg._origPaintRules) cfg._origPaintRules = layer.paint_rules.slice();
+  if (!cfg._origPaintRules) cfg._origPaintRules = (layer.paintRules || []).slice();
 
-  var keyGeo  = _xlsxKeyGeo;
+  var keyGeo   = _xlsxKeyGeo;
   var colorCol = _xlsxColorCol;
   var joinMap  = _xlsxJoinMap;
+
+  /* マッチ数を集計してトーストで診断 */
+  var counts = {};
+  _xlsxColorDefs.forEach(function(d) { counts[d.val] = 0; });
+  counts['その他'] = 0;
+  var knownVals = _xlsxColorDefs.map(function(d) { return d.val; });
+  joinMap.forEach(function(row) {
+    var v = String(row[colorCol] || '').trim();
+    if (knownVals.indexOf(v) !== -1) counts[v]++;
+    else counts['その他']++;
+  });
+  var summary = _xlsxColorDefs.map(function(d) { return d.val + ':' + counts[d.val] + '件'; }).join(' / ');
+  var totalMatch = _xlsxColorDefs.reduce(function(s, d) { return s + counts[d.val]; }, 0);
+  if (totalMatch === 0) {
+    toast('⚠️ 色分け列「' + colorCol + '」でマッチなし。列名・キーを確認してください。', 5000);
+  } else {
+    toast('🎨 色分け: ' + summary, 4000);
+  }
 
   /* 既知カテゴリのルール */
   var rules = _xlsxColorDefs.map(function(def) {
@@ -327,8 +348,7 @@ function _applyPmTilesColorCoding() {
     };
   });
 
-  /* フォールバック: Excelに存在しない or 未定義カテゴリ */
-  var knownVals = _xlsxColorDefs.map(function(d) { return d.val; });
+  /* フォールバック: Excelにない or 未定義カテゴリ */
   rules.unshift({
     dataLayer: cfg.dataLayer,
     symbolizer: new protomapsL.PolygonSymbolizer({ fill: 'rgba(200,200,200,0.45)', stroke: 'rgba(110,110,110,0.55)', width: 1.0 }),
@@ -340,8 +360,10 @@ function _applyPmTilesColorCoding() {
     }
   });
 
-  layer.paint_rules = rules;
-  layer.redraw();
+  layer.paintRules = rules;
+  layer.rerenderTiles();
+  /* rerenderTiles が不十分な場合の fallback */
+  setTimeout(function() { layer.redraw(); }, 50);
   document.getElementById('xlsxLegend').style.display = '';
   _xlsxColorApplied = true;
 }
@@ -350,8 +372,8 @@ function _applyPmTilesColorCoding() {
 function _restorePmTilesStyle() {
   var cfg = window.pmLayers && window.pmLayers[_xlsxTargetName];
   if (!cfg || !cfg._origPaintRules) return;
-  cfg.layer.paint_rules = cfg._origPaintRules;
-  cfg.layer.redraw();
+  cfg.layer.paintRules = cfg._origPaintRules;
+  cfg.layer.rerenderTiles();
   delete cfg._origPaintRules;
   document.getElementById('xlsxLegend').style.display = 'none';
   _xlsxColorApplied = false;
