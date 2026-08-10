@@ -664,6 +664,52 @@ function _bbsPrintLog() {
   setTimeout(function() { w.print(); }, 400);
 }
 
+function _bbsExportCsv() {
+  var headers = ['日時', '種別', '組名', '氏名', '状態', 'コメント', '緯度', '経度'];
+  var rows = [headers];
+
+  _bbsLogFiltered.forEach(function(p) {
+    var tl = _bbsTypeLabel(p);
+    var d  = new Date(p.ts);
+    var dt = d.getFullYear() + '/' +
+             String(d.getMonth() + 1).padStart(2, '0') + '/' +
+             String(d.getDate()).padStart(2, '0') + ' ' +
+             String(d.getHours()).padStart(2, '0') + ':' +
+             String(d.getMinutes()).padStart(2, '0');
+    rows.push([
+      dt,
+      tl.label,
+      p.kumi    || '',
+      p.author  || p.name || '',
+      p.status  || '',
+      p.comment || '',
+      p.lat != null ? p.lat : '',
+      p.lng != null ? p.lng : ''
+    ]);
+  });
+
+  var csv = '﻿'; // BOM（Excel/QGISでの文字化け防止）
+  rows.forEach(function(row) {
+    csv += row.map(function(v) {
+      var s = String(v);
+      if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0) {
+        s = '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }).join(',') + '\r\n';
+  });
+
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'bbs_log_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 document.getElementById('bbsLogBtn').addEventListener('click', _bbsOpenLog);
 document.getElementById('bbsLogSearchBtn').addEventListener('click', _bbsRenderLog);
 document.getElementById('bbsLogModalClose').addEventListener('click', function() {
@@ -672,6 +718,7 @@ document.getElementById('bbsLogModalClose').addEventListener('click', function()
 document.getElementById('bbsLogCloseBtn').addEventListener('click', function() {
   document.getElementById('bbsLogModal').classList.remove('open');
 });
+document.getElementById('bbsLogCsvBtn').addEventListener('click', _bbsExportCsv);
 document.getElementById('bbsLogPrintBtn').addEventListener('click', _bbsPrintLog);
 
 }; /* _bbsStart end */
