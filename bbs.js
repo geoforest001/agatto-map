@@ -555,4 +555,123 @@ window._bbsSendSOS = async function() {
   } catch(e) { toast('SOS送信失敗: ' + e.message, 4000); }
 };
 
+/* ── 投稿ログ ── */
+var _bbsLogFiltered = [];
+
+function _bbsOpenLog() {
+  var today   = new Date().toISOString().slice(0, 10);
+  var weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  document.getElementById('bbsLogFrom').value = weekAgo;
+  document.getElementById('bbsLogTo').value   = today;
+  document.getElementById('bbsLogModal').classList.add('open');
+  _bbsRenderLog();
+}
+
+function _bbsRenderLog() {
+  var fromVal  = document.getElementById('bbsLogFrom').value;
+  var toVal    = document.getElementById('bbsLogTo').value;
+  var fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+  var toDate   = toVal   ? new Date(toVal   + 'T23:59:59') : null;
+
+  _bbsLogFiltered = _bbsPosts.filter(function(p) {
+    var d = new Date(p.ts);
+    if (fromDate && d < fromDate) return false;
+    if (toDate   && d > toDate)   return false;
+    return true;
+  }).sort(function(a, b) { return new Date(a.ts) - new Date(b.ts); });
+
+  document.getElementById('bbsLogCount').textContent = _bbsLogFiltered.length + '件';
+
+  var list = document.getElementById('bbsLogList');
+  if (!_bbsLogFiltered.length) {
+    list.innerHTML = '<div style="text-align:center;color:#999;padding:24px">該当する投稿がありません</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  _bbsLogFiltered.forEach(function(p) {
+    var tl  = _bbsTypeLabel(p);
+    var row = document.createElement('div');
+    row.className = 'bbs-log-row';
+    row.style.borderLeftColor = tl.color;
+
+    var d  = new Date(p.ts);
+    var dt = d.getFullYear() + '/' +
+             String(d.getMonth() + 1).padStart(2, '0') + '/' +
+             String(d.getDate()).padStart(2, '0') + ' ' +
+             String(d.getHours()).padStart(2, '0') + ':' +
+             String(d.getMinutes()).padStart(2, '0');
+
+    var content = '';
+    if (p.status)  content = p.status;
+    if (p.comment) content += (content ? '　' : '') + p.comment;
+
+    var author = (p.kumi || '') + (p.kumi && (p.author || p.name) ? '　' : '') + (p.author || p.name || '');
+
+    row.innerHTML =
+      '<div class="bbs-log-meta">' +
+        '<span class="bbs-log-time">' + dt + '</span>' +
+        '<span class="bbs-log-badge" style="background:' + tl.color + '">' + tl.icon + ' ' + _bbsEsc(tl.label) + '</span>' +
+        '<span class="bbs-log-author">' + _bbsEsc(author) + '</span>' +
+      '</div>' +
+      (content ? '<div class="bbs-log-content">' + _bbsEsc(content) + '</div>' : '');
+
+    list.appendChild(row);
+  });
+}
+
+function _bbsPrintLog() {
+  var fromVal = document.getElementById('bbsLogFrom').value;
+  var toVal   = document.getElementById('bbsLogTo').value;
+
+  var html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>掲示板ログ</title><style>' +
+    'body{font-family:sans-serif;font-size:12px;margin:20px}' +
+    'h2{font-size:15px;margin-bottom:4px}' +
+    '.period{font-size:11px;color:#666;margin-bottom:12px}' +
+    'table{width:100%;border-collapse:collapse}' +
+    'th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top}' +
+    'th{background:#eceff1;font-size:11px}' +
+    '.badge{display:inline-block;color:#fff;border-radius:3px;padding:1px 5px;font-size:11px}' +
+    '</style></head><body>' +
+    '<h2>📄 掲示板ログ — 上戸地区防災マップ</h2>' +
+    '<div class="period">期間: ' + (fromVal || '—') + ' 〜 ' + (toVal || '—') +
+      '　全 ' + _bbsLogFiltered.length + ' 件　（印刷: ' + new Date().toLocaleString('ja-JP') + '）</div>' +
+    '<table><thead><tr><th>日時</th><th>種別</th><th>組名・氏名</th><th>内容</th></tr></thead><tbody>';
+
+  _bbsLogFiltered.forEach(function(p) {
+    var tl = _bbsTypeLabel(p);
+    var d  = new Date(p.ts);
+    var dt = d.getFullYear() + '/' +
+             String(d.getMonth() + 1).padStart(2, '0') + '/' +
+             String(d.getDate()).padStart(2, '0') + ' ' +
+             String(d.getHours()).padStart(2, '0') + ':' +
+             String(d.getMinutes()).padStart(2, '0');
+    var content = '';
+    if (p.status)  content = p.status;
+    if (p.comment) content += (content ? ' / ' : '') + p.comment;
+    var author = (p.kumi || '') + (p.kumi && (p.author || p.name) ? '　' : '') + (p.author || p.name || '');
+    html += '<tr><td style="white-space:nowrap">' + dt + '</td>' +
+      '<td><span class="badge" style="background:' + tl.color + '">' + tl.icon + ' ' + _bbsEsc(tl.label) + '</span></td>' +
+      '<td>' + _bbsEsc(author) + '</td>' +
+      '<td>' + _bbsEsc(content) + '</td></tr>';
+  });
+
+  html += '</tbody></table></body></html>';
+
+  var w = window.open('', '_blank', 'width=820,height=640');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function() { w.print(); }, 400);
+}
+
+document.getElementById('bbsLogBtn').addEventListener('click', _bbsOpenLog);
+document.getElementById('bbsLogSearchBtn').addEventListener('click', _bbsRenderLog);
+document.getElementById('bbsLogModalClose').addEventListener('click', function() {
+  document.getElementById('bbsLogModal').classList.remove('open');
+});
+document.getElementById('bbsLogCloseBtn').addEventListener('click', function() {
+  document.getElementById('bbsLogModal').classList.remove('open');
+});
+document.getElementById('bbsLogPrintBtn').addEventListener('click', _bbsPrintLog);
+
 }; /* _bbsStart end */

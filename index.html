@@ -11,7 +11,7 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="./style.css?v=16" />
+    <link rel="stylesheet" href="./style.css?v=17" />
   </head>
   <body>
     <main class="page">
@@ -75,6 +75,7 @@
       <div id="bbsHandle">
         <div id="bbsHandleGrip"><span></span><span></span><span></span></div>
         <span id="bbsPanelTitle">📋 地域掲示板</span>
+        <button id="bbsLogBtn" title="投稿ログ・印刷">📄</button>
         <button id="bbsRefreshBtn" title="更新">🔄</button>
         <button id="bbsCollapseBtn" title="折りたたむ">▾</button>
         <button id="bbsClose">✕</button>
@@ -263,6 +264,28 @@
       <button id="dropStatClose" title="読込解除">✕</button>
     </div>
 
+    <!-- 掲示板ログモーダル -->
+    <div id="bbsLogModal">
+      <div id="bbsLogBox">
+        <div id="bbsLogModalTitle">
+          <span>📄 投稿ログ</span>
+          <button id="bbsLogModalClose">✕</button>
+        </div>
+        <div id="bbsLogFilterRow">
+          <input type="date" id="bbsLogFrom">
+          <span>〜</span>
+          <input type="date" id="bbsLogTo">
+          <button id="bbsLogSearchBtn">表示</button>
+        </div>
+        <div id="bbsLogCount"></div>
+        <div id="bbsLogList"></div>
+        <div id="bbsLogFooter">
+          <button id="bbsLogCloseBtn">閉じる</button>
+          <button id="bbsLogPrintBtn">🖨️ 印刷</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ドラッグ&ドロップ オーバーレイ -->
     <div id="dropOverlay">
       <div id="dropOverlayBox">
@@ -355,7 +378,7 @@
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
           'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js',
-          './bbs.js?v=9'
+          './bbs.js?v=10'
         ];
         (function seq(i) {
           if (i >= srcs.length) { _onReady(); return; }
