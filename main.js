@@ -378,7 +378,7 @@ function renderLayerControl() {
   // メニューボタン（body直下・fixed）
   var openBtn = document.createElement('button');
   openBtn.className = 'lc-open-btn';
-  openBtn.textContent = 'メニュー';
+  openBtn.textContent = 'レイヤメニュー';
   document.body.appendChild(openBtn);
 
   function openPanel()  { panel.classList.remove('lc-hidden'); openBtn.style.display = 'none'; }
