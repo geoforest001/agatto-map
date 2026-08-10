@@ -61,8 +61,6 @@ const jutakuTiles = protomapsL.leafletLayer({
   ],
   labelRules: []
 });
-jutakuTiles.addTo(map);
-
 // Excel連携用レイヤーレジストリ（excel.jsから参照）
 window.pmLayers = {
   '住宅地図': {
@@ -245,6 +243,7 @@ const kumiBoundaryLayer = L.geoJSON({
   }
 });
 kumiBoundaryLayer.addTo(map);
+jutakuTiles.addTo(map);
 
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
 map.createPane('gpxPane');
