@@ -481,6 +481,73 @@ function _bbsOpenFileInput(useCamera) {
   inp.click();
 }
 
+function _bbsShowCameraGuide() {
+  var ua  = navigator.userAgent;
+  var isIOS    = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isCriOS  = /CriOS/.test(ua);                                 // Chrome on iOS
+  var isFxiOS  = /FxiOS/.test(ua);                                 // Firefox on iOS
+  var isChrome = !isIOS && /Chrome/.test(ua) && !/Edg/.test(ua);
+  var isFF     = !isIOS && (/Firefox/.test(ua) || isFxiOS);
+  var isSafari = /Safari/.test(ua) && !/Chrome/.test(ua) && !/CriOS/.test(ua);
+
+  var browserName, steps;
+  if (isCriOS) {
+    browserName = 'Chrome (iOS)';
+    steps = ['ホーム画面の「設定」を開く', '「Chrome」を選ぶ', '「カメラ」→「許可」に変更', 'ブラウザに戻って再試行'];
+  } else if (isFxiOS) {
+    browserName = 'Firefox (iOS)';
+    steps = ['ホーム画面の「設定」を開く', '「Firefox」を選ぶ', '「カメラ」→「許可」に変更', 'ブラウザに戻って再試行'];
+  } else if (isIOS && isSafari) {
+    browserName = 'Safari (iOS)';
+    steps = ['ホーム画面の「設定」を開く', '下にスクロールして「Safari」', '「カメラ」→「許可」に変更', 'ブラウザに戻って再試行'];
+  } else if (isChrome) {
+    browserName = 'Chrome';
+    steps = ['アドレスバー左の 🔒 をクリック', '「カメラ」→「許可」に変更', 'ページを再読み込み（Cmd+R / Ctrl+R）'];
+  } else if (isFF) {
+    browserName = 'Firefox';
+    steps = ['アドレスバー左の 🔒 をクリック', '「カメラへのアクセス」の × をクリックして削除', 'ページを再読み込み'];
+  } else if (isSafari) {
+    browserName = 'Safari';
+    steps = ['メニューバー「Safari」→「設定」', '「Webサイト」タブ→「カメラ」', 'このサイトを「許可」に変更'];
+  } else {
+    browserName = 'ブラウザ';
+    steps = ['アドレスバー付近のカメラアイコンをクリック', '「許可」に変更してページを再読み込み'];
+  }
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:14px;padding:24px;max-width:340px;width:100%;box-sizing:border-box;font-family:sans-serif;';
+
+  var stepsHtml = steps.map(function(s, i) {
+    return '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">' +
+      '<span style="background:#37474f;color:#fff;border-radius:50%;width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold">' + (i + 1) + '</span>' +
+      '<span style="font-size:13px;line-height:1.5;padding-top:2px">' + s + '</span></div>';
+  }).join('');
+
+  box.innerHTML =
+    '<div style="font-size:40px;text-align:center;margin-bottom:10px">📷</div>' +
+    '<h3 style="margin:0 0 4px;font-size:16px;text-align:center">カメラの許可が必要です</h3>' +
+    '<p style="margin:0 0 16px;font-size:12px;color:#888;text-align:center">' + browserName + ' の設定を確認してください</p>' +
+    stepsHtml;
+
+  var galleryBtn = document.createElement('button');
+  galleryBtn.textContent = '🖼 ギャラリーから選ぶ';
+  galleryBtn.style.cssText = 'width:100%;margin-top:8px;padding:11px;font-size:14px;background:#37474f;color:#fff;border:none;border-radius:8px;cursor:pointer;';
+  galleryBtn.addEventListener('click', function() { document.body.removeChild(overlay); _bbsOpenFileInput(false); });
+
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '閉じる';
+  closeBtn.style.cssText = 'width:100%;margin-top:8px;padding:11px;font-size:14px;background:#eee;border:none;border-radius:8px;cursor:pointer;';
+  closeBtn.addEventListener('click', function() { document.body.removeChild(overlay); });
+
+  box.appendChild(galleryBtn);
+  box.appendChild(closeBtn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
 async function _bbsOpenCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     _bbsOpenFileInput(false); return;
@@ -509,7 +576,10 @@ async function _bbsOpenCamera() {
   } catch(e) {
     document.body.removeChild(overlay);
     if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-      toast('カメラが許可されていません\n設定 > Safari > カメラ を確認してください', 5000);
+      _bbsShowCameraGuide();
+    } else if (e.name === 'NotFoundError') {
+      toast('カメラが見つかりません。ギャラリーから選択してください', 4000);
+      _bbsOpenFileInput(false);
     } else {
       _bbsOpenFileInput(false);
     }
