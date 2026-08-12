@@ -493,24 +493,33 @@ function showConfirm(msg) {
 
 
 /* ─── GPSログ・GPXインポート ───────────────────── */
-let _trackPoints = [];
+let _trackSegments   = [];  // 停止するたびに確定した区間の配列
+let _trackCurrentSeg = [];  // 現在記録中の区間
 let _trackActive = false;
 let _trackLine = null;
 let _importedTrackLine = null;
 
 function _updateTrackLine() {
-  if (_trackPoints.length < 2) return;
-  const latlngs = _trackPoints.map(p => [p.lat, p.lng]);
+  const allSegs = _trackCurrentSeg.length
+    ? _trackSegments.concat([_trackCurrentSeg])
+    : _trackSegments;
+  const latlngs = allSegs.filter(s => s.length >= 2).map(s => s.map(p => [p.lat, p.lng]));
+  if (!latlngs.length) return;
   if (_trackLine) { _trackLine.setLatLngs(latlngs); }
   else { _trackLine = L.polyline(latlngs, { color: '#e53935', weight: 4, opacity: 0.85, pane: 'gpxPane' }).addTo(map); }
 }
 
 function _exportGPX() {
-  if (!_trackPoints.length) { toast('記録がありません', 1500); return; }
+  const segs = _trackSegments.filter(s => s.length);
+  if (!segs.length) { toast('記録がありません', 1500); return; }
   const name = new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GeoForest Map" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk><name>${name}</name><trkseg>\n`;
-  for (const p of _trackPoints) xml += `    <trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.ts}</time></trkpt>\n`;
-  xml += `  </trkseg></trk>\n</gpx>`;
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GeoForest Map" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk><name>${name}</name>\n`;
+  for (const seg of segs) {
+    xml += `  <trkseg>\n`;
+    for (const p of seg) xml += `    <trkpt lat="${p.lat}" lon="${p.lng}"><time>${p.ts}</time></trkpt>\n`;
+    xml += `  </trkseg>\n`;
+  }
+  xml += `</trk>\n</gpx>`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([xml], { type: 'application/gpx+xml' }));
   a.download = `track_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.gpx`;
@@ -552,15 +561,29 @@ function _buildTrackCtrl() {
   if (!div) return;
   div.innerHTML = '';
   if (_trackActive) {
+    const totalPts = _trackSegments.reduce((s, seg) => s + seg.length, 0) + _trackCurrentSeg.length;
     const info = document.createElement('div');
     info.className = 'track-info'; info.id = 'trackInfo';
-    info.textContent = `🔴 記録中 ${_trackPoints.length}点`;
+    info.textContent = `🔴 記録中 ${totalPts}点`;
     div.appendChild(info);
     const stopBtn = document.createElement('button');
     stopBtn.className = 'track-btn'; stopBtn.textContent = '⏹ 停止';
-    stopBtn.onclick = () => { _trackActive = false; _buildTrackCtrl(); };
+    stopBtn.onclick = () => {
+      _trackActive = false;
+      if (_trackCurrentSeg.length) { _trackSegments.push([..._trackCurrentSeg]); _trackCurrentSeg = []; }
+      _buildTrackCtrl();
+    };
     div.appendChild(stopBtn);
-  } else if (_trackPoints.length > 0) {
+  } else if (_trackSegments.length > 0) {
+    const totalPts = _trackSegments.reduce((s, seg) => s + seg.length, 0);
+    const info = document.createElement('div');
+    info.className = 'track-info';
+    info.textContent = `✅ ${_trackSegments.length}区間 ${totalPts}点`;
+    div.appendChild(info);
+    const startBtn = document.createElement('button');
+    startBtn.className = 'track-btn'; startBtn.textContent = '⏺ 続けて記録';
+    startBtn.onclick = () => { _trackActive = true; _trackCurrentSeg = []; toast('ログ記録を再開しました', 1500); _buildTrackCtrl(); };
+    div.appendChild(startBtn);
     const saveBtn = document.createElement('button');
     saveBtn.className = 'track-btn'; saveBtn.textContent = '💾 GPX保存';
     saveBtn.onclick = _exportGPX;
@@ -568,7 +591,7 @@ function _buildTrackCtrl() {
     const clrBtn = document.createElement('button');
     clrBtn.className = 'track-btn'; clrBtn.textContent = '🗑 ログ消去';
     clrBtn.onclick = () => {
-      _trackPoints = [];
+      _trackSegments = []; _trackCurrentSeg = [];
       if (_trackLine) { map.removeLayer(_trackLine); _trackLine = null; }
       _buildTrackCtrl();
     };
@@ -576,7 +599,7 @@ function _buildTrackCtrl() {
   } else {
     const startBtn = document.createElement('button');
     startBtn.className = 'track-btn'; startBtn.textContent = '⏺ ログ開始';
-    startBtn.onclick = () => { _trackActive = true; toast('ログ記録を開始しました', 1500); _buildTrackCtrl(); };
+    startBtn.onclick = () => { _trackActive = true; _trackCurrentSeg = []; toast('ログ記録を開始しました', 1500); _buildTrackCtrl(); };
     div.appendChild(startBtn);
     _appendImportBtn(div);
     if (_importedTrackLine) {
@@ -628,10 +651,11 @@ if (navigator.geolocation) {
         }).addTo(map);
       }
       if (_trackActive) {
-        _trackPoints.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date(pos.timestamp).toISOString() });
+        _trackCurrentSeg.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date(pos.timestamp).toISOString() });
         _updateTrackLine();
+        const totalPts = _trackSegments.reduce((s, seg) => s + seg.length, 0) + _trackCurrentSeg.length;
         const info = document.getElementById('trackInfo');
-        if (info) info.textContent = `🔴 記録中 ${_trackPoints.length}点`;
+        if (info) info.textContent = `🔴 記録中 ${totalPts}点`;
       }
     },
     () => { toast('現在地を取得できませんでした', 3000); },

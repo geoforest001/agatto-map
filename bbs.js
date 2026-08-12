@@ -474,12 +474,65 @@ function _bbsOpenFileInput(useCamera) {
   var inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*';
   if (useCamera) inp.setAttribute('capture', 'environment');
-  inp.style.cssText = 'position:fixed;top:0;left:0;opacity:0;width:0;height:0;pointer-events:none;';
+  // iOS は width:0/height:0 だとクリックが無効になるため 1px で非表示
+  inp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;';
   document.body.appendChild(inp);
-  inp.onchange = function(e) { var f = e.target.files[0]; if (f) _bbsHandlePhoto(f, useCamera); document.body.removeChild(inp); };
+  inp.addEventListener('change', function(e) { var f = e.target.files[0]; if (f) _bbsHandlePhoto(f, useCamera); document.body.removeChild(inp); });
   inp.click();
 }
-document.getElementById('bbsTakePhotoBtn').addEventListener('click', function() { _bbsOpenFileInput(true); });
+
+async function _bbsOpenCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    _bbsOpenFileInput(false); return;
+  }
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
+  var video = document.createElement('video');
+  video.style.cssText = 'max-width:100%;max-height:65vh;border-radius:8px;';
+  video.autoplay = true; video.playsInline = true; video.muted = true;
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:14px;';
+  var captureBtn = document.createElement('button');
+  captureBtn.textContent = '📸 撮影';
+  captureBtn.style.cssText = 'padding:14px 36px;font-size:18px;background:#e53935;color:#fff;border:none;border-radius:10px;cursor:pointer;';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'キャンセル';
+  cancelBtn.style.cssText = 'padding:14px 24px;font-size:16px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:10px;cursor:pointer;';
+  btnRow.appendChild(captureBtn); btnRow.appendChild(cancelBtn);
+  overlay.appendChild(video); overlay.appendChild(btnRow);
+  document.body.appendChild(overlay);
+
+  var stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    video.srcObject = stream;
+  } catch(e) {
+    document.body.removeChild(overlay);
+    if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+      toast('カメラが許可されていません\n設定 > Safari > カメラ を確認してください', 5000);
+    } else {
+      _bbsOpenFileInput(false);
+    }
+    return;
+  }
+
+  function _cleanup() {
+    if (stream) stream.getTracks().forEach(function(t) { t.stop(); });
+    if (overlay.parentNode) document.body.removeChild(overlay);
+  }
+  captureBtn.addEventListener('click', function() {
+    var canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(function(blob) {
+      _cleanup();
+      if (blob) _bbsHandlePhoto(new File([blob], 'camera.jpg', { type: 'image/jpeg' }), true);
+    }, 'image/jpeg', 0.92);
+  });
+  cancelBtn.addEventListener('click', _cleanup);
+}
+
+document.getElementById('bbsTakePhotoBtn').addEventListener('click', _bbsOpenCamera);
 document.getElementById('bbsPickPhotoBtn').addEventListener('click', function() { _bbsOpenFileInput(false); });
 document.getElementById('bbsPhotoInput').addEventListener('change', function(e) { _bbsHandlePhoto(e.target.files[0]); e.target.value = ''; });
 document.getElementById('bbsPhotoPreview').addEventListener('click', function() { if (_bbsPhotoB64) openPhoto(_bbsPhotoB64); });
