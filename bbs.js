@@ -6,6 +6,11 @@
 
 window._bbsStart = function() {
 
+/* ── EmailJS 設定（https://www.emailjs.com/ で取得した値に書き換えてください） ── */
+var _EMAILJS_SERVICE_ID  = 'service_1zb0fsk';
+var _EMAILJS_TEMPLATE_ID = 'template_z9dzepe';
+var _EMAILJS_PUBLIC_KEY  = 'ePmRqLBcE0Zk-6tR0';
+
 var firebaseConfig = {
   apiKey: 'AIzaSyCVJNDMILPbA4n0hSimX5d-WzcJO_n0oRQ',
   authDomain: 'agatto-map.firebaseapp.com',
@@ -152,6 +157,34 @@ async function _bbsDeleteById(id) {
     _bbsRenderList();
     toast('削除しました', 2000);
   } catch(e) { toast('削除失敗: ' + e.message, 4000); }
+}
+
+/* ── メール通知（EmailJS） ── */
+function _bbsSendEmail(postData) {
+  if (typeof emailjs === 'undefined') return;
+  if (_EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY') return;
+  var tl = _bbsTypeLabel(postData);
+  var d  = new Date();
+  var dt = d.getFullYear() + '/' +
+           String(d.getMonth() + 1).padStart(2, '0') + '/' +
+           String(d.getDate()).padStart(2, '0') + ' ' +
+           String(d.getHours()).padStart(2, '0') + ':' +
+           String(d.getMinutes()).padStart(2, '0');
+  var content = '';
+  if (postData.status)  content = postData.status;
+  if (postData.comment) content += (content ? ' / ' : '') + postData.comment;
+  var locStr = (postData.lat != null)
+    ? postData.lat.toFixed(5) + ', ' + postData.lng.toFixed(5)
+    : '位置情報なし';
+  emailjs.send(_EMAILJS_SERVICE_ID, _EMAILJS_TEMPLATE_ID, {
+    post_type: tl.icon + ' ' + tl.label,
+    kumi:      postData.kumi   || '',
+    author:    postData.author || '',
+    content:   content || '（内容なし）',
+    time:      dt,
+    location:  locStr
+  }, { publicKey: _EMAILJS_PUBLIC_KEY })
+  .catch(function(e) { console.warn('[EmailJS]', e); });
 }
 
 /* ── ヘルパー ── */
@@ -636,6 +669,7 @@ document.getElementById('bbsSubmitBtn').addEventListener('click', async function
   btn.disabled = true; status.textContent = '投稿中...';
   try {
     await _fbDb.collection('bbs_posts').add(postData);
+    _bbsSendEmail(postData);
     document.getElementById('bbsSafetyComment').value  = '';
     document.getElementById('bbsDisasterComment').value = '';
     _bbsPhotoB64 = null; _bbsLat = null; _bbsLng = null; _bbsPhotoLat = null; _bbsPhotoLng = null;
@@ -663,7 +697,7 @@ window._bbsSendSOS = async function() {
   var lat = window._lastKnownPos ? window._lastKnownPos.coords.latitude  : null;
   var lng = window._lastKnownPos ? window._lastKnownPos.coords.longitude : null;
   try {
-    await _fbDb.collection('bbs_posts').add({
+    var sosData = {
       ts:     firebase.firestore.FieldValue.serverTimestamp(),
       type:   'sos',
       kumi:   reg.kumi,
@@ -672,7 +706,9 @@ window._bbsSendSOS = async function() {
       lat:    lat,
       lng:    lng,
       photo:  null
-    });
+    };
+    await _fbDb.collection('bbs_posts').add(sosData);
+    _bbsSendEmail(sosData);
     toast('🆘 SOSを送信しました', 4000);
     if (await _bbsFetchPosts()) _bbsRenderMarkers();
   } catch(e) { toast('SOS送信失敗: ' + e.message, 4000); }
