@@ -122,6 +122,14 @@ body {
   color: #555;
 }
 .lc-close-btn:hover { color: #000; }
+.lc-panel-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #333;
+  padding: 2px 0 6px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 4px;
+}
 .lc-open-btn {
   position: fixed;
   top: 10px;

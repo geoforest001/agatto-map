@@ -305,6 +305,11 @@ function renderLayerControl() {
   tbDiv.appendChild(curBtn);
   lcList.insertBefore(tbDiv, lcList.firstChild);
 
+  var panelTitle = document.createElement('div');
+  panelTitle.className = 'lc-panel-title';
+  panelTitle.textContent = 'レイヤメニュー';
+  lcList.insertBefore(panelTitle, tbDiv);
+
   curBtn.addEventListener('click', function() {
     var btn = this; btn.classList.add('loading');
     if (_lastKnownPos && (Date.now() - _lastKnownPos.timestamp) < 30000) {
