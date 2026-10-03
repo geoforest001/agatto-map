@@ -244,6 +244,7 @@ const kumiBoundaryLayer = L.geoJSON({
 });
 kumiBoundaryLayer.addTo(map);
 jutakuTiles.addTo(map);
+kumiBoundaryLayer.bringToBack(); // 組境界を全オーバーレイの最下位に
 
 // GPX・ログトラックはポイントより上（pointPaneのcanvasで隠れない）
 map.createPane('gpxPane');
