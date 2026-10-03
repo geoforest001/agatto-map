@@ -208,11 +208,17 @@ function _bbsTypeLabel(p) {
   return { icon: '📝', color: '#37474f', label: '自由コメント' };
 }
 
+/* ── 10日以内か判定 ── */
+function _bbsIsRecent(ts) {
+  return new Date(ts) >= new Date(Date.now() - 10 * 86400000);
+}
+
 /* ── マーカー描画 ── */
 function _bbsRenderMarkers() {
   _bbsMarkers.forEach(function(m) { map.removeLayer(m); });
   _bbsMarkers = []; _bbsPhotoMap = {};
   _bbsPosts.forEach(function(p) {
+    if (!_bbsIsRecent(p.ts)) return;
     if (p.lat == null || p.lng == null) return;
     var tl = _bbsTypeLabel(p);
     var isSos = p.type === 'sos';
@@ -250,9 +256,8 @@ function _bbsRenderList() {
   loadMsg.style.display = 'none';
   if (!_bbsPosts.length) { emptyMsg.style.display = 'block'; listEl.innerHTML = ''; return; }
   emptyMsg.style.display = 'none';
-  var sorted = _bbsPosts.slice().sort(function(a, b) {
-    return new Date(b.ts) - new Date(a.ts);
-  });
+  var sorted = _bbsPosts.filter(function(p) { return _bbsIsRecent(p.ts); })
+    .sort(function(a, b) { return new Date(b.ts) - new Date(a.ts); });
   listEl.innerHTML = '';
   sorted.forEach(function(p) {
     var tl   = _bbsTypeLabel(p);
