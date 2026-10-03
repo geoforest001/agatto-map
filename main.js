@@ -225,18 +225,18 @@ const kumiBoundaryLayer = L.geoJSON({
     {"type":"Feature","properties":{"組名":"北部９組"},"geometry":{"type":"MultiPolygon","coordinates":[[[[137.921698,35.872698],[137.921806,35.872752],[137.921683,35.872888],[137.921476,35.872842],[137.921119,35.872896],[137.92099,35.87299],[137.922442,35.873628],[137.924632,35.874651],[137.92514,35.874908],[137.92541,35.875041],[137.925537,35.874807],[137.92583,35.874314],[137.925927,35.874174],[137.926019,35.874203],[137.926342,35.874073],[137.926269,35.873919],[137.92617,35.873717],[137.926152,35.873606],[137.926154,35.873432],[137.926182,35.873199],[137.926216,35.87298],[137.926197,35.872819],[137.926176,35.872711],[137.923942,35.87125],[137.921698,35.872698]]]]}}
   ]
 }, {
-  style: { color: '#2f0ef6', weight: 2, fillOpacity: 0 },
+  style: { color: '#2f0ef6', weight: 2, fill: false },
   onEachFeature: function(f, layer) {
     layer.bindPopup('<b>' + f.properties['組名'] + '</b>');
     layer.on('click', function() {
       if (kumiBoundaryLayer._selectedLayer && kumiBoundaryLayer._selectedLayer !== layer) {
-        kumiBoundaryLayer._selectedLayer.setStyle({ color: '#2f0ef6', weight: 2, fillColor: null, fillOpacity: 0 });
+        kumiBoundaryLayer._selectedLayer.setStyle({ color: '#2f0ef6', weight: 2, fill: false });
       }
       if (kumiBoundaryLayer._selectedLayer === layer) {
-        layer.setStyle({ color: '#2f0ef6', weight: 2, fillColor: null, fillOpacity: 0 });
+        layer.setStyle({ color: '#2f0ef6', weight: 2, fill: false });
         kumiBoundaryLayer._selectedLayer = null;
       } else {
-        layer.setStyle({ color: '#e53935', weight: 2.5, fillColor: '#e53935', fillOpacity: 0.25 });
+        layer.setStyle({ color: '#e53935', weight: 2.5, fill: true, fillColor: '#e53935', fillOpacity: 0.25 });
         kumiBoundaryLayer._selectedLayer = layer;
       }
     });
