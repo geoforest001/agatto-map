@@ -6,10 +6,12 @@
 
 window._bbsStart = function() {
 
-/* ── EmailJS 設定（https://www.emailjs.com/ で取得した値に書き換えてください） ── */
-var _EMAILJS_SERVICE_ID  = 'service_1zb0fsk';
-var _EMAILJS_TEMPLATE_ID = 'template_z9dzepe';
-var _EMAILJS_PUBLIC_KEY  = 'ePmRqLBcE0Zk-6tR0';
+/* ── EmailJS 設定 ── */
+var _EMAILJS_SERVICE_ID    = 'service_1zb0fsk';
+var _EMAILJS_TEMPLATE_ID   = 'template_z9dzepe';
+var _EMAILJS_PUBLIC_KEY    = 'ePmRqLBcE0Zk-6tR0';
+var _EMAILJS_FALLBACK_EMAIL = 'geoforest001@gmail.com'; // Firestore 未設定時のフォールバック
+var _bbsMailRecipients     = null; // Firestore から取得した受信者リスト
 
 var firebaseConfig = {
   apiKey: 'AIzaSyCVJNDMILPbA4n0hSimX5d-WzcJO_n0oRQ',
@@ -23,6 +25,15 @@ var firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 var _fbDb   = firebase.firestore();
 var _fbAuth = firebase.auth();
+
+// 受信者リストを Firestore から取得
+_fbDb.collection('settings').doc('mail').get()
+  .then(function(doc) {
+    _bbsMailRecipients = (doc.exists && Array.isArray(doc.data().recipients) && doc.data().recipients.length)
+      ? doc.data().recipients
+      : [_EMAILJS_FALLBACK_EMAIL];
+  })
+  .catch(function() { _bbsMailRecipients = [_EMAILJS_FALLBACK_EMAIL]; });
 
 var _bbsPosts       = [];
 var _bbsMarkers     = [];
@@ -162,7 +173,6 @@ async function _bbsDeleteById(id) {
 /* ── メール通知（EmailJS） ── */
 function _bbsSendEmail(postData) {
   if (typeof emailjs === 'undefined') return;
-  if (_EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY') return;
   var tl = _bbsTypeLabel(postData);
   var d  = new Date();
   var dt = d.getFullYear() + '/' +
@@ -176,15 +186,21 @@ function _bbsSendEmail(postData) {
   var locStr = (postData.lat != null)
     ? postData.lat.toFixed(5) + ', ' + postData.lng.toFixed(5)
     : '位置情報なし';
-  emailjs.send(_EMAILJS_SERVICE_ID, _EMAILJS_TEMPLATE_ID, {
+  var params = {
     post_type: tl.icon + ' ' + tl.label,
     kumi:      postData.kumi   || '',
     author:    postData.author || '',
     content:   content || '（内容なし）',
     time:      dt,
     location:  locStr
-  }, { publicKey: _EMAILJS_PUBLIC_KEY })
-  .catch(function(e) { console.warn('[EmailJS]', e); });
+  };
+  var recipients = _bbsMailRecipients || [_EMAILJS_FALLBACK_EMAIL];
+  recipients.forEach(function(email) {
+    emailjs.send(_EMAILJS_SERVICE_ID, _EMAILJS_TEMPLATE_ID,
+      Object.assign({}, params, { to_email: email }),
+      { publicKey: _EMAILJS_PUBLIC_KEY }
+    ).catch(function(e) { console.warn('[EmailJS]', e); });
+  });
 }
 
 /* ── ヘルパー ── */
