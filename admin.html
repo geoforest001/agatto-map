@@ -256,7 +256,7 @@ function showToast(msg, ms) {
 
 /* ── 認証状態 ── */
 auth.onAuthStateChanged(function(user) {
-  if (user && user.email === ALLOWED_EMAIL) {
+  if (user && user.email.toLowerCase() === ALLOWED_EMAIL.toLowerCase()) {
     document.getElementById('loginScreen').style.display  = 'none';
     document.getElementById('adminHeader').style.display  = '';
     document.getElementById('adminScreen').style.display  = '';
