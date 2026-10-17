@@ -263,7 +263,7 @@ auth.onAuthStateChanged(function(user) {
     loadPostCount();
     loadRecipients();
   } else {
-    if (user) { auth.signOut(); alert('このアカウントにはアクセス権がありません。'); }
+    if (user) { auth.signOut(); alert('アクセス権がありません。\nログインしたアカウント: ' + user.email); }
     document.getElementById('loginScreen').style.display  = '';
     document.getElementById('adminHeader').style.display  = 'none';
     document.getElementById('adminScreen').style.display  = 'none';
