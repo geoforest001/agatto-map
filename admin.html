@@ -258,8 +258,8 @@ function showToast(msg, ms) {
 auth.onAuthStateChanged(function(user) {
   if (user && user.email.toLowerCase() === ALLOWED_EMAIL.toLowerCase()) {
     document.getElementById('loginScreen').style.display  = 'none';
-    document.getElementById('adminHeader').style.display  = '';
-    document.getElementById('adminScreen').style.display  = '';
+    document.getElementById('adminHeader').style.display  = 'block';
+    document.getElementById('adminScreen').style.display  = 'block';
     loadPostCount();
     loadRecipients();
   } else {
